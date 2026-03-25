@@ -1,0 +1,23 @@
+name: sklearn_brane
+version: 1.0.0
+kind: ecu
+
+files:
+  - sklearn_brane.py
+  - run.py
+  - report_template.html
+  - requirements.txt
+  - __init__.py
+
+dependencies:
+  - python3
+  - python3-pip
+
+install:
+  - pip3 install -r requirements.txt
+
+entrypoint:
+  kind: task
+  exec: run.py
+
+actions: {}
