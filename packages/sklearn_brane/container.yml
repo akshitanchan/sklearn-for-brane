@@ -20,4 +20,59 @@ entrypoint:
   kind: task
   exec: run.py
 
-actions: {}
+actions:
+  load_and_split:
+    command:
+      args:
+        - load_and_split
+    input:
+      - name: filepath
+        type: Data
+      - name: target_col
+        type: string
+      - name: test_size
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  scale_features:
+    command:
+      args:
+        - scale_features
+    input:
+      - name: filepath
+        type: IntermediateResult
+      - name: method
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  fit_model:
+    command:
+      args:
+        - fit_model
+    input:
+      - name: filepath
+        type: IntermediateResult
+      - name: target_col
+        type: string
+      - name: model_name
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  predict:
+    command:
+      args:
+        - predict
+    input:
+      - name: model_data
+        type: IntermediateResult
+      - name: split_data
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult

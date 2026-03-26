@@ -1,20 +1,175 @@
-import os
-import shutil
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import joblib
 import pandas as pd
-import numpy as np
-from joblib import dump, load
-
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.tree import DecisionTreeClassifier
 
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-import base64, io, codecs
+RESULT_ROOT = Path("/result")
+
+
+def _ensure_result_dir(name: str) -> Path:
+    output_dir = RESULT_ROOT / name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def _emit_result(path: Path) -> None:
+    print(f'result: "{path}"')
+
+
+def _resolve_csv_path(filepath: str) -> Path:
+    path = Path(filepath)
+    if path.is_file():
+        return path
+
+    candidates = [
+        path / "dataset.csv",
+        path / "data" / "dataset.csv",
+        path / "data.csv",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    raise FileNotFoundError(
+        f"Could not find a dataset CSV from input path '{filepath}'."
+    )
+
+
+def _load_split_frames(
+    data_path: str,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
+    base = Path(data_path)
+    x_train = pd.read_csv(base / "X_train.csv")
+    x_test = pd.read_csv(base / "X_test.csv")
+    y_train = pd.read_csv(base / "y_train.csv").iloc[:, 0]
+    y_test = pd.read_csv(base / "y_test.csv").iloc[:, 0]
+    return x_train, x_test, y_train, y_test
+
+
+def _build_model(model_name: str):
+    normalized = model_name.strip().lower()
+    if normalized == "logistic_regression":
+        return LogisticRegression(max_iter=1000, random_state=42)
+    if normalized == "random_forest":
+        return RandomForestClassifier(n_estimators=200, random_state=42)
+    if normalized == "decision_tree":
+        return DecisionTreeClassifier(random_state=42)
+    if normalized == "svc":
+        return SVC()
+    raise ValueError(f"Unsupported model_name '{model_name}'.")
+
+
+def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
+    dataset_path = _resolve_csv_path(filepath)
+    frame = pd.read_csv(dataset_path)
+
+    if target_col not in frame.columns:
+        raise KeyError(f"Column '{target_col}' was not found in {dataset_path}.")
+
+    x = frame.drop(columns=[target_col])
+    y = frame[target_col]
+
+    x_train, x_test, y_train, y_test = train_test_split(
+        x,
+        y,
+        test_size=test_size,
+        random_state=42,
+        stratify=y,
+    )
+
+    output_dir = _ensure_result_dir("split_data")
+    x_train.to_csv(output_dir / "X_train.csv", index=False)
+    x_test.to_csv(output_dir / "X_test.csv", index=False)
+    y_train.to_frame(name=target_col).to_csv(output_dir / "y_train.csv", index=False)
+    y_test.to_frame(name=target_col).to_csv(output_dir / "y_test.csv", index=False)
+
+    metadata = {
+        "target_col": target_col,
+        "test_size": test_size,
+        "feature_columns": list(x.columns),
+        "dataset_path": str(dataset_path),
+    }
+    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    _emit_result(output_dir)
+
+
+def scale_features(data_path: str, method: str) -> None:
+    x_train, x_test, y_train, y_test = _load_split_frames(data_path)
+    normalized = method.strip().lower()
+
+    if normalized == "standard":
+        scaler = StandardScaler()
+    elif normalized == "minmax":
+        scaler = MinMaxScaler()
+    else:
+        raise ValueError(f"Unsupported scaling method '{method}'.")
+
+    x_train_scaled = pd.DataFrame(
+        scaler.fit_transform(x_train),
+        columns=x_train.columns,
+    )
+    x_test_scaled = pd.DataFrame(
+        scaler.transform(x_test),
+        columns=x_test.columns,
+    )
+
+    output_dir = _ensure_result_dir("scaled_data")
+    x_train_scaled.to_csv(output_dir / "X_train.csv", index=False)
+    x_test_scaled.to_csv(output_dir / "X_test.csv", index=False)
+    y_train.to_frame(name=y_train.name or "target").to_csv(
+        output_dir / "y_train.csv", index=False
+    )
+    y_test.to_frame(name=y_test.name or "target").to_csv(
+        output_dir / "y_test.csv", index=False
+    )
+
+    metadata_path = Path(data_path) / "metadata.json"
+    metadata = {}
+    if metadata_path.exists():
+        metadata = json.loads(metadata_path.read_text())
+    metadata["scaler"] = normalized
+    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    joblib.dump(scaler, output_dir / "scaler.joblib")
+    _emit_result(output_dir)
+
+
+def fit_model(data_path: str, target_col: str, model_name: str) -> None:
+    x_train, _, y_train, _ = _load_split_frames(data_path)
+    model = _build_model(model_name)
+    model.fit(x_train, y_train)
+
+    output_dir = _ensure_result_dir("model_data")
+    joblib.dump(model, output_dir / "model.joblib")
+
+    metadata = {
+        "target_col": target_col,
+        "model_name": model_name,
+        "feature_columns": list(x_train.columns),
+        "training_rows": len(x_train),
+    }
+    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    _emit_result(output_dir)
+
+
+def predict(model_data: str, split_data: str) -> None:
+    model = joblib.load(Path(model_data) / "model.joblib")
+    _, x_test, _, y_test = _load_split_frames(split_data)
+    predictions = pd.Series(model.predict(x_test), name="prediction")
+
+    output_dir = _ensure_result_dir("predictions")
+    predictions.to_frame().to_csv(output_dir / "predictions.csv", index=False)
+    y_test.to_frame(name=y_test.name or "target").to_csv(
+        output_dir / "y_test.csv", index=False
+    )
+    x_test.to_csv(output_dir / "X_test.csv", index=False)
+    _emit_result(output_dir)
