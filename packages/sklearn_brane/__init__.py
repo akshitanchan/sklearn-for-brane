@@ -1,9 +1,11 @@
 from .sklearn_brane import (
     bundle_results,
     cross_validate,
+    encode_labels,
     evaluate,
     feature_importance,
     fit_model,
+    impute_missing,
     load_and_split,
     plot_results,
     predict,
@@ -13,9 +15,11 @@ from .sklearn_brane import (
 __all__ = [
     "bundle_results",
     "cross_validate",
+    "encode_labels",
     "evaluate",
     "feature_importance",
     "fit_model",
+    "impute_missing",
     "load_and_split",
     "plot_results",
     "predict",

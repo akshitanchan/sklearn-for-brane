@@ -8,10 +8,11 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
@@ -81,6 +82,32 @@ def _load_split_frames(
     y_train = pd.read_csv(_latest_matching_file(base, "y_train", ".csv")).iloc[:, 0]
     y_test = pd.read_csv(_latest_matching_file(base, "y_test", ".csv")).iloc[:, 0]
     return x_train, x_test, y_train, y_test
+
+
+def _latest_metadata(data_path: str) -> dict:
+    metadata_path = _latest_matching_file(Path(data_path), "metadata", ".json")
+    return json.loads(metadata_path.read_text())
+
+
+def _save_split_output(
+    output_dir: Path,
+    stamp: str,
+    x_train: pd.DataFrame,
+    x_test: pd.DataFrame,
+    y_train: pd.Series,
+    y_test: pd.Series,
+    metadata: dict,
+) -> None:
+    x_train_path = _timestamped_path(output_dir, "X_train", ".csv", stamp)
+    x_test_path = _timestamped_path(output_dir, "X_test", ".csv", stamp)
+    y_train_path = _timestamped_path(output_dir, "y_train", ".csv", stamp)
+    y_test_path = _timestamped_path(output_dir, "y_test", ".csv", stamp)
+    metadata_path = _timestamped_path(output_dir, "metadata", ".json", stamp)
+    x_train.to_csv(x_train_path, index=False)
+    x_test.to_csv(x_test_path, index=False)
+    y_train.to_frame(name=y_train.name or "target").to_csv(y_train_path, index=False)
+    y_test.to_frame(name=y_test.name or "target").to_csv(y_test_path, index=False)
+    _save_json(metadata_path, metadata)
 
 
 def _build_model(model_name: str):
@@ -298,6 +325,89 @@ def scale_features(data_path: str, method: str) -> None:
     _save_json(metadata_path_out, metadata)
     joblib.dump(scaler, scaler_path)
     _log(f"Saved scaled data to {output_dir}")
+    _emit_result(output_dir)
+
+
+def impute_missing(data_path: str, strategy: str = "most_frequent") -> None:
+    _log(f"Imputing missing values with {strategy} strategy...")
+    stamp = _timestamp()
+    x_train, x_test, y_train, y_test = _load_split_frames(data_path)
+    metadata = _latest_metadata(data_path)
+
+    imputer = SimpleImputer(strategy=strategy)
+    x_train_imputed = pd.DataFrame(
+        imputer.fit_transform(x_train),
+        columns=x_train.columns,
+    )
+    x_test_imputed = pd.DataFrame(
+        imputer.transform(x_test),
+        columns=x_test.columns,
+    )
+
+    metadata["imputer_strategy"] = strategy
+    metadata["missing_values_imputed"] = True
+
+    output_dir = _ensure_result_dir("imputed_data")
+    _save_split_output(output_dir, stamp, x_train_imputed, x_test_imputed, y_train, y_test, metadata)
+    _log(f"Saved imputed data to {output_dir}")
+    _emit_result(output_dir)
+
+
+def encode_labels(data_path: str, columns: str = "") -> None:
+    _log("Encoding categorical features...")
+    stamp = _timestamp()
+    x_train, x_test, y_train, y_test = _load_split_frames(data_path)
+    metadata = _latest_metadata(data_path)
+
+    if columns.strip():
+        candidate_cols = [col.strip() for col in columns.split(",") if col.strip()]
+    else:
+        heart_defaults = ["cp", "restecg", "thal", "slope"]
+        candidate_cols = [
+            col for col in x_train.columns
+            if col in heart_defaults or x_train[col].dtype == object
+        ]
+
+    categorical_cols = [col for col in candidate_cols if col in x_train.columns]
+    if not categorical_cols:
+        metadata["encoded_columns"] = []
+        output_dir = _ensure_result_dir("encoded_data")
+        _save_split_output(output_dir, stamp, x_train, x_test, y_train, y_test, metadata)
+        _log(f"Saved encoded data to {output_dir}")
+        _emit_result(output_dir)
+        return
+
+    remaining_cols = [col for col in x_train.columns if col not in categorical_cols]
+    try:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+    train_encoded = encoder.fit_transform(x_train[categorical_cols].astype(str))
+    test_encoded = encoder.transform(x_test[categorical_cols].astype(str))
+    encoded_cols = list(encoder.get_feature_names_out(categorical_cols))
+
+    x_train_encoded = pd.concat(
+        [
+            x_train[remaining_cols].reset_index(drop=True),
+            pd.DataFrame(train_encoded, columns=encoded_cols),
+        ],
+        axis=1,
+    )
+    x_test_encoded = pd.concat(
+        [
+            x_test[remaining_cols].reset_index(drop=True),
+            pd.DataFrame(test_encoded, columns=encoded_cols),
+        ],
+        axis=1,
+    )
+
+    metadata["encoded_columns"] = categorical_cols
+    metadata["feature_columns"] = list(x_train_encoded.columns)
+
+    output_dir = _ensure_result_dir("encoded_data")
+    _save_split_output(output_dir, stamp, x_train_encoded, x_test_encoded, y_train, y_test, metadata)
+    _log(f"Saved encoded data to {output_dir}")
     _emit_result(output_dir)
 
 

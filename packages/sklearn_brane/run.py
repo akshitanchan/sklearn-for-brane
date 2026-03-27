@@ -24,6 +24,16 @@ if __name__ == "__main__":
             _env("FILEPATH"),
             _env("METHOD"),
         )
+    elif command == "impute_missing":
+        sklearn_brane.impute_missing(
+            _env("FILEPATH"),
+            _env("STRATEGY"),
+        )
+    elif command == "encode_labels":
+        sklearn_brane.encode_labels(
+            _env("FILEPATH"),
+            _env("COLUMNS"),
+        )
     elif command == "fit_model":
         sklearn_brane.fit_model(
             _env("FILEPATH"),

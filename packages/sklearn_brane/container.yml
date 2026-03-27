@@ -1,5 +1,5 @@
 name: sklearn_brane
-version: 1.0.8
+version: 1.0.9
 kind: ecu
 
 files:
@@ -43,6 +43,32 @@ actions:
       - name: filepath
         type: IntermediateResult
       - name: method
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  impute_missing:
+    command:
+      args:
+        - impute_missing
+    input:
+      - name: filepath
+        type: IntermediateResult
+      - name: strategy
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  encode_labels:
+    command:
+      args:
+        - encode_labels
+    input:
+      - name: filepath
+        type: IntermediateResult
+      - name: columns
         type: string
     output:
       - name: result

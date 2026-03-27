@@ -1,0 +1,61 @@
+import sklearn_brane;
+
+on "worker1" {
+    println("Loading dataset...");
+    let data := new Data { name := "heart_disease" };
+
+    println("Splitting data...");
+    let split := load_and_split(data, "target", "0.2");
+
+    println("Imputing missing values...");
+    let imputed := impute_missing(split, "most_frequent");
+
+    println("Encoding categorical features...");
+    let encoded := encode_labels(imputed, "cp,restecg,thal,slope");
+
+    println("Scaling features...");
+    let scaled := scale_features(encoded, "standard");
+
+    println("Training Random Forest...");
+    let rf_model := fit_model(scaled, "target", "random_forest");
+
+    println("Running predictions...");
+    let rf_predictions := predict(rf_model, scaled);
+
+    println("Evaluating predictions...");
+    let rf_eval := evaluate(rf_predictions, scaled, "target");
+    println(rf_eval);
+
+    println("Calculating feature importance...");
+    let rf_importance := feature_importance(rf_model);
+    println(rf_importance);
+
+    println("Running cross-validation...");
+    let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
+    println(rf_cv);
+
+    println("Training Logistic Regression...");
+    let lr_model := fit_model(scaled, "target", "logistic_regression");
+
+    println("Running predictions...");
+    let lr_predictions := predict(lr_model, scaled);
+
+    println("Evaluating predictions...");
+    let lr_eval := evaluate(lr_predictions, scaled, "target");
+    println(lr_eval);
+
+    println("Calculating feature importance...");
+    let lr_importance := feature_importance(lr_model);
+    println(lr_importance);
+
+    println("Running cross-validation...");
+    let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
+    println(lr_cv);
+
+    println("Saving final results...");
+    let results := bundle_results(rf_predictions, rf_model, lr_predictions, lr_model, scaled, "target");
+    println("Saved results to /result/random_forest and /result/logistic_regression.");
+
+    println("Committing result bundle as heart_results...");
+    return commit_result("heart_results", results);
+}

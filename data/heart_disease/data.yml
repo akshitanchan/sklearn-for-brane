@@ -1,0 +1,7 @@
+name: heart_disease
+owners:
+  - "Group 9"
+description: "Heart Disease Cleveland dataset. Binary classification, 303 samples, 13 features plus target. Target column: 'target' (1 = disease present, 0 = absent). Contains missing values in 'ca' and 'thal'."
+created: "2026-03-27"
+access: !file
+  path: ./data
