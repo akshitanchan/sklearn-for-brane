@@ -2,6 +2,7 @@
 set -e
 
 echo "Registering breast_cancer dataset..."
+brane data remove breast_cancer 2>/dev/null || true
 brane data build ./data/breast_cancer/data.yml
 
 echo "Building sklearn_brane package..."
