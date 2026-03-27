@@ -1,20 +1,19 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
-import base64
-from io import BytesIO
 
 RESULT_ROOT = Path("/result")
 
@@ -25,7 +24,11 @@ def _ensure_result_dir(name: str) -> Path:
 
 
 def _emit_result(path: Path) -> None:
-    return None
+    print(f'result: "{path}"')
+
+
+def _log(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 def _resolve_csv_path(filepath: str) -> Path:
@@ -72,6 +75,7 @@ def _build_model(model_name: str):
 
 
 def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
+    _log("Loading dataset...")
     dataset_path = _resolve_csv_path(filepath)
     frame = pd.read_csv(dataset_path)
 
@@ -81,6 +85,7 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
     x = frame.drop(columns=[target_col])
     y = frame[target_col]
 
+    _log("Splitting data...")
     x_train, x_test, y_train, y_test = train_test_split(
         x,
         y,
@@ -102,10 +107,12 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
         "dataset_path": str(dataset_path),
     }
     (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    _log(f"Saved split files to {output_dir}")
     _emit_result(output_dir)
 
 
 def scale_features(data_path: str, method: str) -> None:
+    _log(f"Scaling features with {method} scaler...")
     x_train, x_test, y_train, y_test = _load_split_frames(data_path)
     normalized = method.strip().lower()
 
@@ -142,10 +149,12 @@ def scale_features(data_path: str, method: str) -> None:
     metadata["scaler"] = normalized
     (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
     joblib.dump(scaler, output_dir / "scaler.joblib")
+    _log(f"Saved scaled data to {output_dir}")
     _emit_result(output_dir)
 
 
 def fit_model(data_path: str, target_col: str, model_name: str) -> None:
+    _log(f"Training {model_name} model...")
     x_train, _, y_train, _ = _load_split_frames(data_path)
     model = _build_model(model_name)
     model.fit(x_train, y_train)
@@ -160,10 +169,12 @@ def fit_model(data_path: str, target_col: str, model_name: str) -> None:
         "training_rows": len(x_train),
     }
     (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    _log(f"Saved model files to {output_dir}")
     _emit_result(output_dir)
 
 
 def predict(model_data: str, split_data: str) -> None:
+    _log("Running predictions...")
     model = joblib.load(Path(model_data) / "model.joblib")
     _, x_test, _, y_test = _load_split_frames(split_data)
     predictions = pd.Series(model.predict(x_test), name="prediction")
@@ -174,18 +185,29 @@ def predict(model_data: str, split_data: str) -> None:
         output_dir / "y_test.csv", index=False
     )
     x_test.to_csv(output_dir / "X_test.csv", index=False)
+    _log(f"Saved predictions to {output_dir / 'predictions.csv'}")
     _emit_result(output_dir)
 
 def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
+    _log("Evaluating predictions...")
     y_test = pd.read_csv(Path(split_data) / "y_test.csv").iloc[:, 0]
     y_pred = pd.read_csv(Path(pred_path) / "predictions.csv").iloc[:, 0]
     acc = accuracy_score(y_test, y_pred)
-    report = classification_report(y_test, y_pred)
-    report_escaped = report.replace('"', '\\"').replace('\n', '\\n')
-    result = f"Accuracy: {acc:.4f}\\n{report_escaped}"
+    output_dir = _ensure_result_dir("evaluation")
+    report_path = output_dir / "classification_report.csv"
+    summary_path = output_dir / "results_summary.json"
+    pd.DataFrame(
+        classification_report(y_test, y_pred, output_dict=True)
+    ).transpose().to_csv(report_path)
+    summary = {"accuracy": round(float(acc), 6), "classification_report_csv": str(report_path)}
+    summary_path.write_text(json.dumps(summary, indent=2))
+    result = f"Accuracy: {acc:.4f}"
+    _log(f"Saved classification report to {report_path}")
+    _log(f"Saved summary to {summary_path}")
     print(f'output: "{result}"')
 
 def feature_importance(model_data: str) -> None:
+    _log("Calculating feature importance...")
     model = joblib.load(Path(model_data) / "model.joblib")
     meta = json.loads((Path(model_data) / "metadata.json").read_text())
     features = meta.get("feature_columns")
@@ -197,20 +219,41 @@ def feature_importance(model_data: str) -> None:
         print('output: "Model does not support feature importances."')
         return
     ranking = sorted(zip(features, importances), key=lambda x: -x[1])
-    lines = ["Feature Importances:"]
-    for name, score in ranking:
+    output_dir = _ensure_result_dir("feature_importance")
+    csv_path = output_dir / "feature_importance.csv"
+    summary_path = output_dir / "top_features.json"
+    pd.DataFrame(ranking, columns=["feature", "importance"]).to_csv(csv_path, index=False)
+    top_five = ranking[:5]
+    summary_path.write_text(
+        json.dumps(
+            [{"feature": name, "importance": round(float(score), 6)} for name, score in top_five],
+            indent=2,
+        )
+    )
+    lines = ["Top 5 features:"]
+    for name, score in top_five:
         lines.append(f"  {name}: {score:.4f}")
     result = "\\n".join(lines)
+    _log(f"Saved full feature ranking to {csv_path}")
+    _log(f"Saved top 5 feature summary to {summary_path}")
     print(f'output: "{result}"')
 
 def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 5) -> None:
+    _log(f"Running {cv}-fold cross-validation...")
     x_train, _, y_train, _ = _load_split_frames(split_data)
     model = _build_model(model_name)
     scores = cross_val_score(model, x_train, y_train, cv=cv, scoring="accuracy")
+    output_dir = _ensure_result_dir("cross_validation")
+    scores_path = output_dir / "cross_validation_scores.csv"
+    pd.DataFrame(
+        {"fold": list(range(1, len(scores) + 1)), "accuracy": scores}
+    ).to_csv(scores_path, index=False)
     result = f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"
+    _log(f"Saved cross-validation scores to {scores_path}")
     print(f'output: "{result}"')
 
 def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
+    _log("Generating plots...")
     import os
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
     os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
@@ -226,20 +269,7 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
     y_test = pd.read_csv(Path(split_data) / "y_test.csv").iloc[:, 0]
     y_pred = pd.read_csv(Path(pred_path) / "predictions.csv").iloc[:, 0]
 
-    # Confusion matrix
     cm = confusion_matrix(y_test, y_pred)
-    plt.figure(figsize=(5,4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title("Confusion Matrix")
-    buf1 = BytesIO()
-    plt.savefig(buf1, format="png", bbox_inches="tight")
-    plt.close()
-    buf1.seek(0)
-    cm_b64 = base64.b64encode(buf1.read()).decode()
-
-    # Feature importance
     if hasattr(model, "feature_importances_"):
         importances = model.feature_importances_
     elif hasattr(model, "coef_"):
@@ -247,26 +277,26 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
     else:
         importances = None
 
+    output_dir = _ensure_result_dir("sklearn_report")
+    confusion_path = output_dir / "confusion_matrix.png"
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.title("Confusion Matrix")
+    plt.tight_layout()
+    plt.savefig(confusion_path, format="png", bbox_inches="tight")
+    plt.close()
     if importances is not None and features is not None:
-        plt.figure(figsize=(6,4))
+        feature_plot_path = output_dir / "feature_importance.png"
+        plt.figure(figsize=(6, 4))
         idx = np.argsort(importances)[::-1]
         plt.bar(np.array(features)[idx], np.array(importances)[idx])
         plt.xticks(rotation=45, ha="right")
         plt.title("Feature Importance")
         plt.tight_layout()
-        buf2 = BytesIO()
-        plt.savefig(buf2, format="png", bbox_inches="tight")
+        plt.savefig(feature_plot_path, format="png", bbox_inches="tight")
         plt.close()
-        buf2.seek(0)
-        fi_b64 = base64.b64encode(buf2.read()).decode()
-    else:
-        fi_b64 = ""
-
-    # Write HTML report
-    output_dir = _ensure_result_dir("sklearn_report")
-    html_path = output_dir / "report.html"
-    template_path = Path(__file__).parent / "report_template.html"
-    template = template_path.read_text()
-    html = template.replace("{{CONFUSION_MATRIX}}", cm_b64).replace("{{FEATURE_IMPORTANCE}}", fi_b64)
-    html_path.write_text(html)
+        _log(f"Saved feature importance plot to {feature_plot_path}")
+    _log(f"Saved confusion matrix plot to {confusion_path}")
     _emit_result(output_dir)
