@@ -7,7 +7,7 @@
 
 ## Dataset
 
-- **Breast Cancer Wisconsin**:  
+- **Breast Cancer Wisconsin (Diagnostic)**[1]:  
   - Binary classification (malignant vs benign)
   - 569 samples, 30 numeric features
   - CSV: `data/breast_cancer/data/dataset.csv` 
@@ -97,3 +97,6 @@ sklearn-brane/
 - joblib==1.2.0
 - matplotlib==3.7.1
 - seaborn==0.12.2
+
+## References
+[1] https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic
