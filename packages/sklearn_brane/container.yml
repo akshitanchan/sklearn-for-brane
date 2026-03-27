@@ -14,7 +14,7 @@ dependencies:
   - python3-pip
 
 install:
-  - pip3 install -r requirements.txt
+  - pip3 install scikit-learn==1.2.2 pandas==2.0.1 numpy==1.23.5 joblib==1.2.0 matplotlib==3.7.1 seaborn==0.12.2
 
 entrypoint:
   kind: task
