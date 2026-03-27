@@ -1,19 +1,34 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-echo "Registering breast_cancer dataset..."
-brane data remove breast_cancer 2>/dev/null || true
-brane data build ./data/breast_cancer/data.yml
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG_DIR="$ROOT_DIR/packages/sklearn_brane"
+VERSION="$(awk '/^version:/ { print $2; exit }' "$PKG_DIR/container.yml")"
+IMAGE_TAR="$HOME/.local/share/brane/packages/sklearn_brane/$VERSION/image.tar"
 
-echo "Building sklearn_brane package..."
-cd packages/sklearn_brane
-brane build ./container.yml --init ~/branelet
-cd ../..
+register_dataset() {
+    local name="$1"
+    local manifest="$2"
+    if [[ -f "$manifest" ]]; then
+        echo "Registering $name dataset..."
+        brane data remove "$name" 2>/dev/null || true
+        brane data build "$manifest"
+    fi
+}
 
-echo "Loading image into docker..."
-docker load -i ~/.local/share/brane/packages/sklearn_brane/1.0.0/image.tar
+register_dataset "breast_cancer" "$ROOT_DIR/data/breast_cancer/data.yml"
+register_dataset "heart_disease" "$ROOT_DIR/data/heart_disease/data.yml"
+
+echo "Building sklearn_brane package version $VERSION..."
+(
+    cd "$PKG_DIR"
+    brane build ./container.yml --init ~/branelet
+)
+
+echo "Loading image into docker from $IMAGE_TAR..."
+docker load -i "$IMAGE_TAR"
 
 echo "Pushing to registry..."
 brane push sklearn_brane
 
-echo "Done. Run 'brane list' to verify."
+echo "Done. Run 'brane search' to verify."
