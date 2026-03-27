@@ -1,32 +1,71 @@
 import sklearn_brane;
 
 on "worker1" {
+    println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
+
+    println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
+    println("Saved split files to /result/X_train.csv, /result/X_test.csv, /result/y_train.csv, /result/y_test.csv");
+
+    println("Scaling features...");
     let scaled := scale_features(split, "standard");
+    println("Saved scaled data to /result and scaler to /result/scaler.joblib");
 
     println("Training Random Forest...");
     let rf_model := fit_model(scaled, "target", "random_forest");
+    println("Saved model files to /result/model.joblib and /result/metadata.json");
+
+    println("Running predictions...");
     let rf_predictions := predict(rf_model, scaled);
+    println("Saved predictions to /result/predictions.csv");
+
+    println("Evaluating predictions...");
     let rf_eval := evaluate(rf_predictions, scaled, "target");
     println(rf_eval);
+    println("Saved evaluation summary to /result/results_summary.json and report to /result/classification_report.csv");
+
+    println("Calculating feature importance...");
     let rf_importance := feature_importance(rf_model);
     println(rf_importance);
+    println("Saved full feature ranking to /result/feature_importance.csv and top 5 to /result/top_features.json");
+
+    println("Running cross-validation...");
     let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
     println(rf_cv);
+    println("Saved cross-validation scores to /result/cross_validation_scores.csv");
+
+    println("Generating plots...");
     let rf_report := plot_results(rf_predictions, rf_model, scaled, "target");
+    println("Saved plots to /result/confusion_matrix.png and /result/feature_importance.png");
 
     println("Training Logistic Regression...");
     let lr_model := fit_model(scaled, "target", "logistic_regression");
+    println("Saved model files to /result/model.joblib and /result/metadata.json");
+
+    println("Running predictions...");
     let lr_predictions := predict(lr_model, scaled);
+    println("Saved predictions to /result/predictions.csv");
+
+    println("Evaluating predictions...");
     let lr_eval := evaluate(lr_predictions, scaled, "target");
     println(lr_eval);
+    println("Saved evaluation summary to /result/results_summary.json and report to /result/classification_report.csv");
+
+    println("Calculating feature importance...");
     let lr_importance := feature_importance(lr_model);
     println(lr_importance);
+    println("Saved full feature ranking to /result/feature_importance.csv and top 5 to /result/top_features.json");
+
+    println("Running cross-validation...");
     let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
     println(lr_cv);
+    println("Saved cross-validation scores to /result/cross_validation_scores.csv");
+
+    println("Generating plots...");
     let _ := plot_results(lr_predictions, lr_model, scaled, "target");
+    println("Saved plots to /result/confusion_matrix.png and /result/feature_importance.png");
 
-    return commit_result("sklearn_report", rf_report);
+    println("Committing result bundle as sklearn_results...");
+    return commit_result("sklearn_results", rf_report);
 }
-

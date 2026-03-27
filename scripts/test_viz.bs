@@ -1,19 +1,39 @@
 import sklearn_brane;
 
 on "worker1" {
+    println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
+
+    println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
+
+    println("Scaling features...");
     let scaled := scale_features(split, "standard");
+
+    println("Training Random Forest...");
     let model := fit_model(scaled, "target", "random_forest");
+
+    println("Running predictions...");
     let predictions := predict(model, scaled);
 
+    println("Evaluating predictions...");
     let evaluation := evaluate(predictions, scaled, "target");
+
+    println("Calculating feature importance...");
     let importance := feature_importance(model);
+
+    println("Running cross-validation...");
     let cv := cross_validate(scaled, "target", "random_forest", "5");
+
+    println("Generating plots...");
     let report := plot_results(predictions, model, scaled, "target");
 
     println(evaluation);
+    println("Saved evaluation summary to /result/results_summary.json and report to /result/classification_report.csv");
     println(importance);
+    println("Saved full feature ranking to /result/feature_importance.csv and top 5 to /result/top_features.json");
     println(cv);
+    println("Saved cross-validation scores to /result/cross_validation_scores.csv");
+    println("Saved plots to /result/confusion_matrix.png and /result/feature_importance.png");
     println(report);
 }

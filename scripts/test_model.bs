@@ -1,12 +1,23 @@
 import sklearn_brane;
 
 on "worker1" {
+    println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
+
+    println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
+
+    println("Scaling features...");
     let scaled := scale_features(split, "standard");
+
+    println("Training Random Forest...");
     let model := fit_model(scaled, "target", "random_forest");
+
+    println("Running predictions...");
     let predictions := predict(model, scaled);
 
+    println("Saved model files to /result/model.joblib and /result/metadata.json");
+    println("Saved predictions to /result/predictions.csv");
     println(model);
     println(predictions);
 }
