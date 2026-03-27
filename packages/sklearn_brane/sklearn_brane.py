@@ -24,7 +24,7 @@ def _ensure_result_dir(name: str) -> Path:
 
 
 def _emit_result(path: Path) -> None:
-    print(f'result: "{path}"')
+    return None
 
 
 def _log(message: str) -> None:
