@@ -1,9 +1,19 @@
 import sklearn_brane;
 
-let data := new Data { name := "breast_cancer" };
-let split := load_and_split(data, "target", "0.2") on "worker1";
-let scaled := scale_features(split, "standard") on "worker1";
-let model := fit_model(scaled, "target", "random_forest") on "worker1";
-let predictions := predict(model, scaled) on "worker1";
-let _ := plot_results(predictions, model, scaled, "target") on "worker1";
-println("plot_results smoke test completed");
+on "worker1" {
+    let data := new Data { name := "breast_cancer" };
+    let split := load_and_split(data, "target", "0.2");
+    let scaled := scale_features(split, "standard");
+    let model := fit_model(scaled, "target", "random_forest");
+    let predictions := predict(model, scaled);
+
+    let evaluation := evaluate(predictions, scaled, "target");
+    let importance := feature_importance(model);
+    let cv := cross_validate(scaled, "target", "random_forest", "5");
+    let report := plot_results(predictions, model, scaled, "target");
+
+    println(evaluation);
+    println(importance);
+    println(cv);
+    println(report);
+}

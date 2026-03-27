@@ -1,10 +1,12 @@
 import sklearn_brane;
 
-let data := new Data { name := "breast_cancer" };
-let split := load_and_split(data, "target", "0.2") on "worker1";
-let scaled := scale_features(split, "standard") on "worker1";
-let model := fit_model(scaled, "target", "random_forest") on "worker1";
-let predictions := predict(model, scaled) on "worker1";
+on "worker1" {
+    let data := new Data { name := "breast_cancer" };
+    let split := load_and_split(data, "target", "0.2");
+    let scaled := scale_features(split, "standard");
+    let model := fit_model(scaled, "target", "random_forest");
+    let predictions := predict(model, scaled);
 
-println(model);
-println(predictions);
+    println(model);
+    println(predictions);
+}

@@ -13,10 +13,6 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import seaborn as sns
 import base64
 from io import BytesIO
 
@@ -24,13 +20,12 @@ RESULT_ROOT = Path("/result")
 
 
 def _ensure_result_dir(name: str) -> Path:
-    output_dir = RESULT_ROOT / name
-    output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir
+    RESULT_ROOT.mkdir(parents=True, exist_ok=True)
+    return RESULT_ROOT
 
 
 def _emit_result(path: Path) -> None:
-    print(f'result: "{path}"')
+    return None
 
 
 def _resolve_csv_path(filepath: str) -> Path:
@@ -216,6 +211,15 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     print(f'output: "{result}"')
 
 def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
+    import os
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
+
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
     model = joblib.load(Path(model_data) / "model.joblib")
     meta = json.loads((Path(model_data) / "metadata.json").read_text())
     features = meta.get("feature_columns")

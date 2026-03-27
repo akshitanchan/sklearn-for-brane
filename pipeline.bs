@@ -1,33 +1,32 @@
 import sklearn_brane;
 
-let data := new Data { name := "breast_cancer" };
-let split := load_and_split(data, "target", "0.2") on "worker1";
-let scaled := scale_features(split, "standard") on "worker1";
+on "worker1" {
+    let data := new Data { name := "breast_cancer" };
+    let split := load_and_split(data, "target", "0.2");
+    let scaled := scale_features(split, "standard");
 
-// Train Random Forest
-println("Training Random Forest...");
-let rf_model := fit_model(scaled, "target", "random_forest") on "worker1";
-let rf_predictions := predict(rf_model, scaled) on "worker1";
-let rf_eval := evaluate(rf_predictions, scaled, "target") on "worker1";
-println(rf_eval);
-let rf_importance := feature_importance(rf_model) on "worker1";
-println(rf_importance);
-let rf_cv := cross_validate(scaled, "target", "random_forest", "5") on "worker1";
-println(rf_cv);
-let rf_report := plot_results(rf_predictions, rf_model, scaled, "target") on "worker1";
+    println("Training Random Forest...");
+    let rf_model := fit_model(scaled, "target", "random_forest");
+    let rf_predictions := predict(rf_model, scaled);
+    let rf_eval := evaluate(rf_predictions, scaled, "target");
+    println(rf_eval);
+    let rf_importance := feature_importance(rf_model);
+    println(rf_importance);
+    let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
+    println(rf_cv);
+    let rf_report := plot_results(rf_predictions, rf_model, scaled, "target");
 
-// Train Logistic Regression
-println("Training Logistic Regression...");
-let lr_model := fit_model(scaled, "target", "logistic_regression") on "worker1";
-let lr_predictions := predict(lr_model, scaled) on "worker1";
-let lr_eval := evaluate(lr_predictions, scaled, "target") on "worker1";
-println(lr_eval);
-let lr_importance := feature_importance(lr_model) on "worker1";
-println(lr_importance);
-let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5") on "worker1";
-println(lr_cv);
-let lr_report := plot_results(lr_predictions, lr_model, scaled, "target") on "worker1";
+    println("Training Logistic Regression...");
+    let lr_model := fit_model(scaled, "target", "logistic_regression");
+    let lr_predictions := predict(lr_model, scaled);
+    let lr_eval := evaluate(lr_predictions, scaled, "target");
+    println(lr_eval);
+    let lr_importance := feature_importance(lr_model);
+    println(lr_importance);
+    let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
+    println(lr_cv);
+    let _ := plot_results(lr_predictions, lr_model, scaled, "target");
 
-// Commit result (Random Forest report)
-commit_result(rf_report, "sklearn_report");
-println("Pipeline complete. Report committed as 'sklearn_report'.");
+    return commit_result("sklearn_report", rf_report);
+}
+
