@@ -1,11 +1,8 @@
 import sklearn_brane;
 
 let data := new Data { name := "breast_cancer" };
+let split := load_and_split(data, "target", "0.2") on "worker1";
+let scaled := scale_features(split, "standard") on "worker1";
 
-on "worker1" {
-    let split := load_and_split(data, "target", "0.2");
-    let scaled := scale_features(split, "standard");
-
-    println(split);
-    println(scaled);
-};
+println(split);
+println(scaled);
