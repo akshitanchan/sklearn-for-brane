@@ -7,11 +7,16 @@ import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import base64
+from io import BytesIO
 
 RESULT_ROOT = Path("/result")
 
@@ -172,4 +177,97 @@ def predict(model_data: str, split_data: str) -> None:
         output_dir / "y_test.csv", index=False
     )
     x_test.to_csv(output_dir / "X_test.csv", index=False)
+    _emit_result(output_dir)
+
+
+# === Person 3: Analysis + Visualization ===
+
+def evaluate(model_data: str, split_data: str) -> None:
+    model = joblib.load(Path(model_data) / "model.joblib")
+    _, x_test, _, y_test = _load_split_frames(split_data)
+    y_pred = model.predict(x_test)
+    acc = accuracy_score(y_test, y_pred)
+    report = classification_report(y_test, y_pred)
+    print(f"Accuracy: {acc:.4f}\n")
+    print("Classification Report:\n" + report)
+
+def feature_importance(model_data: str) -> None:
+    model = joblib.load(Path(model_data) / "model.joblib")
+    meta = json.loads((Path(model_data) / "metadata.json").read_text())
+    features = meta.get("feature_columns")
+    if hasattr(model, "feature_importances_"):
+        importances = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        importances = np.abs(model.coef_).flatten()
+    else:
+        print("Model does not support feature importances.")
+        return
+    ranking = sorted(zip(features, importances), key=lambda x: -x[1])
+    print("Feature Importances:")
+    for name, score in ranking:
+        print(f"  {name}: {score:.4f}")
+
+def cross_validate(data_path: str, target_col: str, model_name: str, cv: int = 5) -> None:
+    dataset_path = _resolve_csv_path(data_path)
+    frame = pd.read_csv(dataset_path)
+    x = frame.drop(columns=[target_col])
+    y = frame[target_col]
+    model = _build_model(model_name)
+    scores = cross_val_score(model, x, y, cv=cv, scoring="accuracy")
+    print(f"Cross-validated accuracy: {scores.mean():.4f} ± {scores.std():.4f} (n={cv})")
+
+def plot_results(model_data: str, split_data: str, output_dir: str = None) -> None:
+    model = joblib.load(Path(model_data) / "model.joblib")
+    meta = json.loads((Path(model_data) / "metadata.json").read_text())
+    features = meta.get("feature_columns")
+    _, x_test, _, y_test = _load_split_frames(split_data)
+    y_pred = model.predict(x_test)
+
+    # Confusion matrix
+    cm = confusion_matrix(y_test, y_pred)
+    plt.figure(figsize=(5,4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.title("Confusion Matrix")
+    buf1 = BytesIO()
+    plt.savefig(buf1, format="png", bbox_inches="tight")
+    plt.close()
+    buf1.seek(0)
+    cm_b64 = base64.b64encode(buf1.read()).decode()
+
+    # Feature importance
+    if hasattr(model, "feature_importances_"):
+        importances = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        importances = np.abs(model.coef_).flatten()
+    else:
+        importances = None
+
+    if importances is not None and features is not None:
+        plt.figure(figsize=(6,4))
+        idx = np.argsort(importances)[::-1]
+        plt.bar(np.array(features)[idx], np.array(importances)[idx])
+        plt.xticks(rotation=45, ha="right")
+        plt.title("Feature Importance")
+        plt.tight_layout()
+        buf2 = BytesIO()
+        plt.savefig(buf2, format="png", bbox_inches="tight")
+        plt.close()
+        buf2.seek(0)
+        fi_b64 = base64.b64encode(buf2.read()).decode()
+    else:
+        fi_b64 = ""
+
+    # Write HTML report
+    if output_dir is None:
+        output_dir = _ensure_result_dir("sklearn_report")
+    else:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+    html_path = output_dir / "report.html"
+    template_path = Path(__file__).parent / "report_template.html"
+    template = template_path.read_text()
+    html = template.replace("{{CONFUSION_MATRIX}}", cm_b64).replace("{{FEATURE_IMPORTANCE}}", fi_b64)
+    html_path.write_text(html)
     _emit_result(output_dir)

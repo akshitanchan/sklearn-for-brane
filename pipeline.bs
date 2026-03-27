@@ -4,8 +4,24 @@ let data := new Data { name := "breast_cancer" };
 let split := load_and_split(data, "target", "0.2");
 let scaled := scale_features(split, "standard");
 
+// Train Random Forest
 println("Training Random Forest...");
-let model := fit_model(scaled, "target", "random_forest");
-let predictions := predict(model, scaled);
+let rf_model := fit_model(scaled, "target", "random_forest");
+let rf_predictions := predict(rf_model, scaled);
+evaluate(rf_model, scaled);
+feature_importance(rf_model);
+cross_validate(data, "target", "random_forest", "5");
+let rf_report := plot_results(rf_model, scaled);
 
-println(predictions);
+// Train Logistic Regression
+println("Training Logistic Regression...");
+let lr_model := fit_model(scaled, "target", "logistic_regression");
+let lr_predictions := predict(lr_model, scaled);
+evaluate(lr_model, scaled);
+feature_importance(lr_model);
+cross_validate(data, "target", "logistic_regression", "5");
+let lr_report := plot_results(lr_model, scaled);
+
+// Commit result (Random Forest report)
+commit_result(rf_report, "sklearn_report");
+println("Pipeline complete. Report committed as 'sklearn_report'.");

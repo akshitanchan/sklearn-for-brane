@@ -76,3 +76,57 @@ actions:
     output:
       - name: result
         type: IntermediateResult
+
+  evaluate:
+    command:
+      args:
+        - evaluate
+    input:
+      - name: model_data
+        type: IntermediateResult
+      - name: split_data
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult
+
+  feature_importance:
+    command:
+      args:
+        - feature_importance
+    input:
+      - name: model_data
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult
+
+  cross_validate:
+    command:
+      args:
+        - cross_validate
+    input:
+      - name: data_path
+        type: Data
+      - name: target_col
+        type: string
+      - name: model_name
+        type: string
+      - name: cv
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  plot_results:
+    command:
+      args:
+        - plot_results
+    input:
+      - name: model_data
+        type: IntermediateResult
+      - name: split_data
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult

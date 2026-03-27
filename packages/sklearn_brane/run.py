@@ -35,5 +35,26 @@ if __name__ == "__main__":
             _env("MODEL_DATA"),
             _env("SPLIT_DATA"),
         )
+    elif command == "evaluate":
+        sklearn_brane.evaluate(
+            _env("MODEL_DATA"),
+            _env("SPLIT_DATA"),
+        )
+    elif command == "feature_importance":
+        sklearn_brane.feature_importance(
+            _env("MODEL_DATA"),
+        )
+    elif command == "cross_validate":
+        sklearn_brane.cross_validate(
+            _env("DATA_PATH"),
+            _env("TARGET_COL"),
+            _env("MODEL_NAME"),
+            int(_env("CV")),
+        )
+    elif command == "plot_results":
+        sklearn_brane.plot_results(
+            _env("MODEL_DATA"),
+            _env("SPLIT_DATA"),
+        )
     else:
         raise ValueError(f"Unknown command '{command}'.")
