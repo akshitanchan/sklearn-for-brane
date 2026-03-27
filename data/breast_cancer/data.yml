@@ -3,6 +3,5 @@ owners:
   - "Group 9"
 description: "Wisconsin Breast Cancer dataset. Binary classification, 569 samples, 30 numeric features. Target column: 'target' (1 = malignant, 0 = benign). No missing values."
 created: "2025-03-21"
-access:
-  local:
-    path: ./data
+access: !local
+  path: ./data
