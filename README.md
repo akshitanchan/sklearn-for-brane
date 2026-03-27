@@ -3,7 +3,7 @@
 
 ## Overview
 
-**`sklearn_brane`** is a Brane package that wraps core scikit-learn functionality into 8 BraneScript-callable actions. It enables distributed, reproducible ML pipelines on real healthcare data. The demo pipeline trains two classifiers on the Breast Cancer dataset and produces an HTML report with metrics and visualizations.
+**`sklearn_brane`** is a Brane package that wraps core scikit-learn functionality into 8 BraneScript-callable actions. It enables distributed, reproducible ML pipelines on real healthcare data. The demo pipeline trains two classifiers on the Breast Cancer dataset and saves CSV, JSON, and PNG outputs with metrics and visualizations.
 
 ## Dataset
 
@@ -25,7 +25,7 @@ All 8 functions are implemented in `sklearn_brane` and exposed as Brane actions:
 | 5 | `evaluate`          | Accuracy + classification report, prints string      |
 | 6 | `feature_importance`| Ranked feature importances, prints string            |
 | 7 | `cross_validate`    | Cross-val accuracy, prints mean +/- std              |
-| 8 | `plot_results`      | Confusion matrix + feature importance as HTML report |
+| 8 | `plot_results`      | Confusion matrix + feature importance PNG outputs    |
 
 Each function reads from an IntermediateResult path, performs one sklearn operation, saves to `/result/`, and returns a path or prints a string.
 
@@ -47,7 +47,6 @@ sklearn-brane/
 │       ├── container.yml
 │       ├── run.py
 │       ├── sklearn_brane.py
-│       ├── report_template.html
 │       ├── requirements.txt
 │       └── __init__.py
 └── scripts/
@@ -75,18 +74,19 @@ sklearn-brane/
 	- Scale features
 	- Train and evaluate Random Forest and Logistic Regression models
 	- Print metrics and feature importances
-	- Generate and commit an HTML report
+	- Generate and commit PNG/CSV/JSON result artifacts
 
-3. **View the HTML report:**
+3. **Inspect the committed results:**
 	```bash
-	brane data path sklearn_report
-	# Open the returned path in your browser to view confusion matrix and feature importance charts
+	brane data path sklearn_results
+	# Inspect the returned directory for predictions.csv, results_summary.json, classification_report.csv,
+	# confusion_matrix.png, feature_importance.png, and other saved outputs
 	```
 
 ## Visualization
 
-- The `plot_results` function generates an HTML report with embedded confusion matrix and feature importance plots.
-- The report is committed as `sklearn_report` and can be opened in any browser.
+- The `plot_results` function generates `confusion_matrix.png` and `feature_importance.png`.
+- The pipeline commits the output bundle as `sklearn_results`.
 
 ## Requirements
 

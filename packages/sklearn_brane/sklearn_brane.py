@@ -277,7 +277,7 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
     else:
         importances = None
 
-    output_dir = _ensure_result_dir("sklearn_report")
+    output_dir = _ensure_result_dir("sklearn_results")
     confusion_path = output_dir / "confusion_matrix.png"
     plt.figure(figsize=(5, 4))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")

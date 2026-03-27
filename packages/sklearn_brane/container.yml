@@ -1,11 +1,10 @@
 name: sklearn_brane
-version: 1.0.4
+version: 1.0.5
 kind: ecu
 
 files:
   - sklearn_brane.py
   - run.py
-  - report_template.html
   - requirements.txt
   - __init__.py
 
