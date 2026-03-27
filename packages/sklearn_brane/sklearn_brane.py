@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import joblib
@@ -29,6 +30,21 @@ def _emit_result(path: Path) -> None:
 
 def _log(message: str) -> None:
     print(message, file=sys.stderr)
+
+
+def _timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+
+def _save_json(path: Path, payload: dict | list) -> None:
+    path.write_text(json.dumps(payload, indent=2))
+
+
+def _write_timestamped_copy(path: Path, stamp: str) -> Path:
+    archive_path = path.with_name(f"{path.stem}_{stamp}{path.suffix}")
+    if path.exists():
+        archive_path.write_bytes(path.read_bytes())
+    return archive_path
 
 
 def _resolve_csv_path(filepath: str) -> Path:
@@ -76,6 +92,7 @@ def _build_model(model_name: str):
 
 def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
     _log("Loading dataset...")
+    stamp = _timestamp()
     dataset_path = _resolve_csv_path(filepath)
     frame = pd.read_csv(dataset_path)
 
@@ -95,10 +112,14 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
     )
 
     output_dir = _ensure_result_dir("split_data")
-    x_train.to_csv(output_dir / "X_train.csv", index=False)
-    x_test.to_csv(output_dir / "X_test.csv", index=False)
-    y_train.to_frame(name=target_col).to_csv(output_dir / "y_train.csv", index=False)
-    y_test.to_frame(name=target_col).to_csv(output_dir / "y_test.csv", index=False)
+    x_train_path = output_dir / "X_train.csv"
+    x_test_path = output_dir / "X_test.csv"
+    y_train_path = output_dir / "y_train.csv"
+    y_test_path = output_dir / "y_test.csv"
+    x_train.to_csv(x_train_path, index=False)
+    x_test.to_csv(x_test_path, index=False)
+    y_train.to_frame(name=target_col).to_csv(y_train_path, index=False)
+    y_test.to_frame(name=target_col).to_csv(y_test_path, index=False)
 
     metadata = {
         "target_col": target_col,
@@ -106,13 +127,17 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
         "feature_columns": list(x.columns),
         "dataset_path": str(dataset_path),
     }
-    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    metadata_path = output_dir / "metadata.json"
+    _save_json(metadata_path, metadata)
+    for path in [x_train_path, x_test_path, y_train_path, y_test_path, metadata_path]:
+        _write_timestamped_copy(path, stamp)
     _log(f"Saved split files to {output_dir}")
     _emit_result(output_dir)
 
 
 def scale_features(data_path: str, method: str) -> None:
     _log(f"Scaling features with {method} scaler...")
+    stamp = _timestamp()
     x_train, x_test, y_train, y_test = _load_split_frames(data_path)
     normalized = method.strip().lower()
 
@@ -133,34 +158,41 @@ def scale_features(data_path: str, method: str) -> None:
     )
 
     output_dir = _ensure_result_dir("scaled_data")
-    x_train_scaled.to_csv(output_dir / "X_train.csv", index=False)
-    x_test_scaled.to_csv(output_dir / "X_test.csv", index=False)
-    y_train.to_frame(name=y_train.name or "target").to_csv(
-        output_dir / "y_train.csv", index=False
-    )
-    y_test.to_frame(name=y_test.name or "target").to_csv(
-        output_dir / "y_test.csv", index=False
-    )
+    x_train_path = output_dir / "X_train.csv"
+    x_test_path = output_dir / "X_test.csv"
+    y_train_path = output_dir / "y_train.csv"
+    y_test_path = output_dir / "y_test.csv"
+    scaler_path = output_dir / "scaler.joblib"
+    x_train_scaled.to_csv(x_train_path, index=False)
+    x_test_scaled.to_csv(x_test_path, index=False)
+    y_train.to_frame(name=y_train.name or "target").to_csv(y_train_path, index=False)
+    y_test.to_frame(name=y_test.name or "target").to_csv(y_test_path, index=False)
 
     metadata_path = Path(data_path) / "metadata.json"
     metadata = {}
     if metadata_path.exists():
         metadata = json.loads(metadata_path.read_text())
     metadata["scaler"] = normalized
-    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
-    joblib.dump(scaler, output_dir / "scaler.joblib")
+    metadata_path_out = output_dir / "metadata.json"
+    _save_json(metadata_path_out, metadata)
+    joblib.dump(scaler, scaler_path)
+    for path in [x_train_path, x_test_path, y_train_path, y_test_path, metadata_path_out, scaler_path]:
+        _write_timestamped_copy(path, stamp)
     _log(f"Saved scaled data to {output_dir}")
     _emit_result(output_dir)
 
 
 def fit_model(data_path: str, target_col: str, model_name: str) -> None:
     _log(f"Training {model_name} model...")
+    stamp = _timestamp()
     x_train, _, y_train, _ = _load_split_frames(data_path)
     model = _build_model(model_name)
     model.fit(x_train, y_train)
 
     output_dir = _ensure_result_dir("model_data")
-    joblib.dump(model, output_dir / "model.joblib")
+    model_path = output_dir / "model.joblib"
+    metadata_path = output_dir / "metadata.json"
+    joblib.dump(model, model_path)
 
     metadata = {
         "target_col": target_col,
@@ -168,39 +200,46 @@ def fit_model(data_path: str, target_col: str, model_name: str) -> None:
         "feature_columns": list(x_train.columns),
         "training_rows": len(x_train),
     }
-    (output_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
+    _save_json(metadata_path, metadata)
+    for path in [model_path, metadata_path]:
+        _write_timestamped_copy(path, stamp)
     _log(f"Saved model files to {output_dir}")
     _emit_result(output_dir)
 
 
 def predict(model_data: str, split_data: str) -> None:
     _log("Running predictions...")
+    stamp = _timestamp()
     model = joblib.load(Path(model_data) / "model.joblib")
     _, x_test, _, y_test = _load_split_frames(split_data)
     predictions = pd.Series(model.predict(x_test), name="prediction")
 
     output_dir = _ensure_result_dir("predictions")
-    predictions.to_frame().to_csv(output_dir / "predictions.csv", index=False)
-    y_test.to_frame(name=y_test.name or "target").to_csv(
-        output_dir / "y_test.csv", index=False
-    )
-    x_test.to_csv(output_dir / "X_test.csv", index=False)
-    _log(f"Saved predictions to {output_dir / 'predictions.csv'}")
+    predictions_path = output_dir / "predictions.csv"
+    y_test_path = output_dir / "y_test.csv"
+    x_test_path = output_dir / "X_test.csv"
+    predictions.to_frame().to_csv(predictions_path, index=False)
+    y_test.to_frame(name=y_test.name or "target").to_csv(y_test_path, index=False)
+    x_test.to_csv(x_test_path, index=False)
+    for path in [predictions_path, y_test_path, x_test_path]:
+        _write_timestamped_copy(path, stamp)
+    _log(f"Saved predictions to {predictions_path}")
     _emit_result(output_dir)
 
 def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
     _log("Evaluating predictions...")
+    stamp = _timestamp()
     y_test = pd.read_csv(Path(split_data) / "y_test.csv").iloc[:, 0]
     y_pred = pd.read_csv(Path(pred_path) / "predictions.csv").iloc[:, 0]
     acc = accuracy_score(y_test, y_pred)
     output_dir = _ensure_result_dir("evaluation")
     report_path = output_dir / "classification_report.csv"
     summary_path = output_dir / "results_summary.json"
-    pd.DataFrame(
-        classification_report(y_test, y_pred, output_dict=True)
-    ).transpose().to_csv(report_path)
+    pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose().to_csv(report_path)
     summary = {"accuracy": round(float(acc), 6), "classification_report_csv": str(report_path)}
-    summary_path.write_text(json.dumps(summary, indent=2))
+    _save_json(summary_path, summary)
+    for path in [report_path, summary_path]:
+        _write_timestamped_copy(path, stamp)
     result = f"Accuracy: {acc:.4f}"
     _log(f"Saved classification report to {report_path}")
     _log(f"Saved summary to {summary_path}")
@@ -208,6 +247,7 @@ def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
 
 def feature_importance(model_data: str) -> None:
     _log("Calculating feature importance...")
+    stamp = _timestamp()
     model = joblib.load(Path(model_data) / "model.joblib")
     meta = json.loads((Path(model_data) / "metadata.json").read_text())
     features = meta.get("feature_columns")
@@ -224,12 +264,12 @@ def feature_importance(model_data: str) -> None:
     summary_path = output_dir / "top_features.json"
     pd.DataFrame(ranking, columns=["feature", "importance"]).to_csv(csv_path, index=False)
     top_five = ranking[:5]
-    summary_path.write_text(
-        json.dumps(
-            [{"feature": name, "importance": round(float(score), 6)} for name, score in top_five],
-            indent=2,
-        )
+    _save_json(
+        summary_path,
+        [{"feature": name, "importance": round(float(score), 6)} for name, score in top_five],
     )
+    for path in [csv_path, summary_path]:
+        _write_timestamped_copy(path, stamp)
     lines = ["Top 5 features:"]
     for name, score in top_five:
         lines.append(f"  {name}: {score:.4f}")
@@ -240,6 +280,7 @@ def feature_importance(model_data: str) -> None:
 
 def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 5) -> None:
     _log(f"Running {cv}-fold cross-validation...")
+    stamp = _timestamp()
     x_train, _, y_train, _ = _load_split_frames(split_data)
     model = _build_model(model_name)
     scores = cross_val_score(model, x_train, y_train, cv=cv, scoring="accuracy")
@@ -248,12 +289,14 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     pd.DataFrame(
         {"fold": list(range(1, len(scores) + 1)), "accuracy": scores}
     ).to_csv(scores_path, index=False)
+    _write_timestamped_copy(scores_path, stamp)
     result = f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"
     _log(f"Saved cross-validation scores to {scores_path}")
     print(f'output: "{result}"')
 
 def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
     _log("Generating plots...")
+    stamp = _timestamp()
     import os
     os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
     os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
@@ -287,6 +330,7 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
     plt.tight_layout()
     plt.savefig(confusion_path, format="png", bbox_inches="tight")
     plt.close()
+    _write_timestamped_copy(confusion_path, stamp)
     if importances is not None and features is not None:
         feature_plot_path = output_dir / "feature_importance.png"
         plt.figure(figsize=(6, 4))
@@ -297,6 +341,7 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
         plt.tight_layout()
         plt.savefig(feature_plot_path, format="png", bbox_inches="tight")
         plt.close()
+        _write_timestamped_copy(feature_plot_path, stamp)
         _log(f"Saved feature importance plot to {feature_plot_path}")
     _log(f"Saved confusion matrix plot to {confusion_path}")
     _emit_result(output_dir)

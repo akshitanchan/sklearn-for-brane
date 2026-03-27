@@ -10,8 +10,8 @@ on "worker1" {
     println("Scaling features...");
     let scaled := scale_features(split, "standard");
 
-    println("Saved split files to /result/X_train.csv, /result/X_test.csv, /result/y_train.csv, /result/y_test.csv");
-    println("Saved scaled data to /result and scaler to /result/scaler.joblib");
+    println("Saved split files to /result/... plus timestamped copies");
+    println("Saved scaled data and scaler to /result/... plus timestamped copies");
     println(split);
     println(scaled);
 }

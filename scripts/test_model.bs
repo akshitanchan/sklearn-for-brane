@@ -16,8 +16,8 @@ on "worker1" {
     println("Running predictions...");
     let predictions := predict(model, scaled);
 
-    println("Saved model files to /result/model.joblib and /result/metadata.json");
-    println("Saved predictions to /result/predictions.csv");
+    println("Saved model files to /result/... plus timestamped copies");
+    println("Saved predictions to /result/predictions.csv plus timestamped copies");
     println(model);
     println(predictions);
 }

@@ -29,11 +29,11 @@ on "worker1" {
     let report := plot_results(predictions, model, scaled, "target");
 
     println(evaluation);
-    println("Saved evaluation summary to /result/results_summary.json and report to /result/classification_report.csv");
+    println("Saved evaluation JSON/CSV to /result/... plus timestamped copies");
     println(importance);
-    println("Saved full feature ranking to /result/feature_importance.csv and top 5 to /result/top_features.json");
+    println("Saved feature importance CSV/JSON to /result/... plus timestamped copies");
     println(cv);
-    println("Saved cross-validation scores to /result/cross_validation_scores.csv");
-    println("Saved plots to /result/confusion_matrix.png and /result/feature_importance.png");
+    println("Saved cross-validation scores to /result/cross_validation_scores.csv plus timestamped copies");
+    println("Saved plot PNGs to /result/... plus timestamped copies");
     println(report);
 }
