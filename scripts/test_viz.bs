@@ -4,5 +4,6 @@ let data := new Data { name := "breast_cancer" };
 let split := load_and_split(data, "target", "0.2");
 let scaled := scale_features(split, "standard");
 let model := fit_model(scaled, "target", "random_forest");
-let _ := plot_results(model, scaled);
+let predictions := predict(model, scaled);
+let _ := plot_results(predictions, model, scaled, "target");
 println("plot_results smoke test completed");

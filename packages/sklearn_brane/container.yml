@@ -82,13 +82,15 @@ actions:
       args:
         - evaluate
     input:
-      - name: model_data
+      - name: predictions
         type: IntermediateResult
       - name: split_data
         type: IntermediateResult
+      - name: target_col
+        type: string
     output:
-      - name: result
-        type: IntermediateResult
+      - name: output
+        type: string
 
   feature_importance:
     command:
@@ -98,35 +100,39 @@ actions:
       - name: model_data
         type: IntermediateResult
     output:
-      - name: result
-        type: IntermediateResult
+      - name: output
+        type: string
 
   cross_validate:
     command:
       args:
         - cross_validate
     input:
-      - name: data_path
-        type: Data
+      - name: split_data
+        type: IntermediateResult
       - name: target_col
         type: string
       - name: model_name
         type: string
-      - name: cv
+      - name: n_folds
         type: string
     output:
-      - name: result
-        type: IntermediateResult
+      - name: output
+        type: string
 
   plot_results:
     command:
       args:
         - plot_results
     input:
+      - name: predictions
+        type: IntermediateResult
       - name: model_data
         type: IntermediateResult
       - name: split_data
         type: IntermediateResult
+      - name: target_col
+        type: string
     output:
       - name: result
         type: IntermediateResult

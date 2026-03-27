@@ -8,19 +8,25 @@ let scaled := scale_features(split, "standard");
 println("Training Random Forest...");
 let rf_model := fit_model(scaled, "target", "random_forest");
 let rf_predictions := predict(rf_model, scaled);
-evaluate(rf_model, scaled);
-feature_importance(rf_model);
-cross_validate(data, "target", "random_forest", "5");
-let rf_report := plot_results(rf_model, scaled);
+let rf_eval := evaluate(rf_predictions, scaled, "target");
+println(rf_eval);
+let rf_importance := feature_importance(rf_model);
+println(rf_importance);
+let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
+println(rf_cv);
+let rf_report := plot_results(rf_predictions, rf_model, scaled, "target");
 
 // Train Logistic Regression
 println("Training Logistic Regression...");
 let lr_model := fit_model(scaled, "target", "logistic_regression");
 let lr_predictions := predict(lr_model, scaled);
-evaluate(lr_model, scaled);
-feature_importance(lr_model);
-cross_validate(data, "target", "logistic_regression", "5");
-let lr_report := plot_results(lr_model, scaled);
+let lr_eval := evaluate(lr_predictions, scaled, "target");
+println(lr_eval);
+let lr_importance := feature_importance(lr_model);
+println(lr_importance);
+let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
+println(lr_cv);
+let lr_report := plot_results(lr_predictions, lr_model, scaled, "target");
 
 // Commit result (Random Forest report)
 commit_result(rf_report, "sklearn_report");

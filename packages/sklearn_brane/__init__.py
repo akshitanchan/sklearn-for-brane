@@ -1,8 +1,21 @@
-from .sklearn_brane import fit_model, load_and_split, predict, scale_features
+from .sklearn_brane import (
+    cross_validate,
+    evaluate,
+    feature_importance,
+    fit_model,
+    load_and_split,
+    plot_results,
+    predict,
+    scale_features,
+)
 
 __all__ = [
+    "cross_validate",
+    "evaluate",
+    "feature_importance",
     "fit_model",
     "load_and_split",
+    "plot_results",
     "predict",
     "scale_features",
 ]

@@ -13,6 +13,8 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import base64
@@ -179,17 +181,14 @@ def predict(model_data: str, split_data: str) -> None:
     x_test.to_csv(output_dir / "X_test.csv", index=False)
     _emit_result(output_dir)
 
-
-# === Person 3: Analysis + Visualization ===
-
-def evaluate(model_data: str, split_data: str) -> None:
-    model = joblib.load(Path(model_data) / "model.joblib")
-    _, x_test, _, y_test = _load_split_frames(split_data)
-    y_pred = model.predict(x_test)
+def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
+    y_test = pd.read_csv(Path(split_data) / "y_test.csv").iloc[:, 0]
+    y_pred = pd.read_csv(Path(pred_path) / "predictions.csv").iloc[:, 0]
     acc = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred)
-    print(f"Accuracy: {acc:.4f}\n")
-    print("Classification Report:\n" + report)
+    report_escaped = report.replace('"', '\\"').replace('\n', '\\n')
+    result = f"Accuracy: {acc:.4f}\\n{report_escaped}"
+    print(f'output: "{result}"')
 
 def feature_importance(model_data: str) -> None:
     model = joblib.load(Path(model_data) / "model.joblib")
@@ -200,28 +199,28 @@ def feature_importance(model_data: str) -> None:
     elif hasattr(model, "coef_"):
         importances = np.abs(model.coef_).flatten()
     else:
-        print("Model does not support feature importances.")
+        print('output: "Model does not support feature importances."')
         return
     ranking = sorted(zip(features, importances), key=lambda x: -x[1])
-    print("Feature Importances:")
+    lines = ["Feature Importances:"]
     for name, score in ranking:
-        print(f"  {name}: {score:.4f}")
+        lines.append(f"  {name}: {score:.4f}")
+    result = "\\n".join(lines)
+    print(f'output: "{result}"')
 
-def cross_validate(data_path: str, target_col: str, model_name: str, cv: int = 5) -> None:
-    dataset_path = _resolve_csv_path(data_path)
-    frame = pd.read_csv(dataset_path)
-    x = frame.drop(columns=[target_col])
-    y = frame[target_col]
+def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 5) -> None:
+    x_train, _, y_train, _ = _load_split_frames(split_data)
     model = _build_model(model_name)
-    scores = cross_val_score(model, x, y, cv=cv, scoring="accuracy")
-    print(f"Cross-validated accuracy: {scores.mean():.4f} ± {scores.std():.4f} (n={cv})")
+    scores = cross_val_score(model, x_train, y_train, cv=cv, scoring="accuracy")
+    result = f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"
+    print(f'output: "{result}"')
 
-def plot_results(model_data: str, split_data: str, output_dir: str = None) -> None:
+def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
     model = joblib.load(Path(model_data) / "model.joblib")
     meta = json.loads((Path(model_data) / "metadata.json").read_text())
     features = meta.get("feature_columns")
-    _, x_test, _, y_test = _load_split_frames(split_data)
-    y_pred = model.predict(x_test)
+    y_test = pd.read_csv(Path(split_data) / "y_test.csv").iloc[:, 0]
+    y_pred = pd.read_csv(Path(pred_path) / "predictions.csv").iloc[:, 0]
 
     # Confusion matrix
     cm = confusion_matrix(y_test, y_pred)
@@ -260,11 +259,7 @@ def plot_results(model_data: str, split_data: str, output_dir: str = None) -> No
         fi_b64 = ""
 
     # Write HTML report
-    if output_dir is None:
-        output_dir = _ensure_result_dir("sklearn_report")
-    else:
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = _ensure_result_dir("sklearn_report")
     html_path = output_dir / "report.html"
     template_path = Path(__file__).parent / "report_template.html"
     template = template_path.read_text()
