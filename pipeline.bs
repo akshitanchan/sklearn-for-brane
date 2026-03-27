@@ -6,65 +6,59 @@ on "worker1" {
 
     println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
-    println("Saved split files to /result/X_train_<timestamp>.csv, /result/X_test_<timestamp>.csv, /result/y_train_<timestamp>.csv, /result/y_test_<timestamp>.csv, and /result/metadata_<timestamp>.json");
+    println("Saved split files to /result.");
 
     println("Scaling features...");
     let scaled := scale_features(split, "standard");
-    println("Saved scaled data to /result/X_train_<timestamp>.csv, /result/X_test_<timestamp>.csv, /result/y_train_<timestamp>.csv, /result/y_test_<timestamp>.csv, /result/metadata_<timestamp>.json, and /result/scaler_<timestamp>.joblib");
+    println("Saved scaled data to /result.");
 
     println("Training Random Forest...");
     let rf_model := fit_model(scaled, "target", "random_forest");
-    println("Saved model files to /result/model_<timestamp>.joblib and /result/metadata_<timestamp>.json");
+    println("Saved model files to /result.");
 
     println("Running predictions...");
     let rf_predictions := predict(rf_model, scaled);
-    println("Saved predictions to /result/predictions_<timestamp>.csv, /result/y_test_<timestamp>.csv, and /result/X_test_<timestamp>.csv");
+    println("Saved prediction files to /result.");
 
     println("Evaluating predictions...");
     let rf_eval := evaluate(rf_predictions, scaled, "target");
     println(rf_eval);
-    println("Saved evaluation files to /result/results_summary_<timestamp>.json and /result/classification_report_<timestamp>.csv");
 
     println("Calculating feature importance...");
     let rf_importance := feature_importance(rf_model);
     println(rf_importance);
-    println("Saved feature importance files to /result/feature_importance_<timestamp>.csv and /result/top_features_<timestamp>.json");
 
     println("Running cross-validation...");
     let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
     println(rf_cv);
-    println("Saved cross-validation scores to /result/cross_validation_scores_<timestamp>.csv");
 
     println("Generating plots...");
     let rf_report := plot_results(rf_predictions, rf_model, scaled, "target");
-    println("Saved plot PNGs to /result/confusion_matrix_<timestamp>.png and /result/feature_importance_<timestamp>.png");
+    println("Saved plot PNGs to /result.");
 
     println("Training Logistic Regression...");
     let lr_model := fit_model(scaled, "target", "logistic_regression");
-    println("Saved model files to /result/model_<timestamp>.joblib and /result/metadata_<timestamp>.json");
+    println("Saved model files to /result.");
 
     println("Running predictions...");
     let lr_predictions := predict(lr_model, scaled);
-    println("Saved predictions to /result/predictions_<timestamp>.csv, /result/y_test_<timestamp>.csv, and /result/X_test_<timestamp>.csv");
+    println("Saved prediction files to /result.");
 
     println("Evaluating predictions...");
     let lr_eval := evaluate(lr_predictions, scaled, "target");
     println(lr_eval);
-    println("Saved evaluation files to /result/results_summary_<timestamp>.json and /result/classification_report_<timestamp>.csv");
 
     println("Calculating feature importance...");
     let lr_importance := feature_importance(lr_model);
     println(lr_importance);
-    println("Saved feature importance files to /result/feature_importance_<timestamp>.csv and /result/top_features_<timestamp>.json");
 
     println("Running cross-validation...");
     let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
     println(lr_cv);
-    println("Saved cross-validation scores to /result/cross_validation_scores_<timestamp>.csv");
 
     println("Generating plots...");
     let _ := plot_results(lr_predictions, lr_model, scaled, "target");
-    println("Saved plot PNGs to /result/confusion_matrix_<timestamp>.png and /result/feature_importance_<timestamp>.png");
+    println("Saved plot PNGs to /result.");
 
     println("Committing result bundle as sklearn_results...");
     return commit_result("sklearn_results", rf_report);

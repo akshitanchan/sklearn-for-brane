@@ -53,6 +53,15 @@ def _latest_matching_file(directory: Path, stem: str, suffix: str) -> Path:
     return matches[-1]
 
 
+def _copy_if_exists(source_dir: Path, stem: str, suffix: str, destination_dir: Path) -> None:
+    try:
+        source = _latest_matching_file(source_dir, stem, suffix)
+    except FileNotFoundError:
+        return
+    destination = destination_dir / source.name
+    destination.write_bytes(source.read_bytes())
+
+
 def _resolve_csv_path(filepath: str) -> Path:
     path = Path(filepath)
     if path.is_file():
@@ -236,7 +245,10 @@ def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
     pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose().to_csv(report_path)
     summary = {"accuracy": round(float(acc), 6), "classification_report_csv": str(report_path)}
     _save_json(summary_path, summary)
-    result = f"Accuracy: {acc:.4f}"
+    result = (
+        f"Accuracy: {acc:.4f}\\n"
+        f"Saved evaluation files: {summary_path.name}, {report_path.name}"
+    )
     _log(f"Saved classification report to {report_path}")
     _log(f"Saved summary to {summary_path}")
     print(f'output: "{result}"')
@@ -268,6 +280,9 @@ def feature_importance(model_data: str) -> None:
     lines = ["Top 5 features:"]
     for name, score in top_five:
         lines.append(f"  {name}: {score:.4f}")
+    lines.append(
+        f"Saved feature importance files: {csv_path.name}, {summary_path.name}"
+    )
     result = "\\n".join(lines)
     _log(f"Saved full feature ranking to {csv_path}")
     _log(f"Saved top 5 feature summary to {summary_path}")
@@ -284,7 +299,10 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     pd.DataFrame(
         {"fold": list(range(1, len(scores) + 1)), "accuracy": scores}
     ).to_csv(scores_path, index=False)
-    result = f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"
+    result = (
+        f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})\\n"
+        f"Saved cross-validation file: {scores_path.name}"
+    )
     _log(f"Saved cross-validation scores to {scores_path}")
     print(f'output: "{result}"')
 
@@ -337,4 +355,14 @@ def plot_results(pred_path: str, model_data: str, split_data: str, target_col: s
         plt.close()
         _log(f"Saved feature importance plot to {feature_plot_path}")
     _log(f"Saved confusion matrix plot to {confusion_path}")
+
+    _copy_if_exists(Path(pred_path), "predictions", ".csv", output_dir)
+    _copy_if_exists(Path(pred_path), "y_test", ".csv", output_dir)
+    _copy_if_exists(Path(pred_path), "X_test", ".csv", output_dir)
+    _copy_if_exists(RESULT_ROOT, "results_summary", ".json", output_dir)
+    _copy_if_exists(RESULT_ROOT, "classification_report", ".csv", output_dir)
+    _copy_if_exists(RESULT_ROOT, "feature_importance", ".csv", output_dir)
+    _copy_if_exists(RESULT_ROOT, "top_features", ".json", output_dir)
+    _copy_if_exists(RESULT_ROOT, "cross_validation_scores", ".csv", output_dir)
+
     _emit_result(output_dir)

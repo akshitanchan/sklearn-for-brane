@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PKG_DIR="$ROOT_DIR/packages/sklearn_brane"
 RESULT_NAME="sklearn_results"
-RESULT_DEST="$ROOT_DIR/results/$RESULT_NAME"
+RESULT_DEST="$ROOT_DIR/results"
 
 VERSION="$(awk '/^version:/ { print $2; exit }' "$PKG_DIR/container.yml")"
 IMAGE_TAR="$HOME/.local/share/brane/packages/sklearn_brane/$VERSION/image.tar"
