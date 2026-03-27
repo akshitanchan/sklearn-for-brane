@@ -1,6 +1,7 @@
 import sklearn_brane;
 
 on "worker1" {
+    println("Running model smoke test...");
     println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
 
@@ -16,8 +17,7 @@ on "worker1" {
     println("Running predictions...");
     let predictions := predict(model, scaled);
 
-    println("Saved model files to /result/... plus timestamped copies");
-    println("Saved predictions to /result/predictions.csv plus timestamped copies");
+    println("Model smoke test complete.");
     println(model);
     println(predictions);
 }
