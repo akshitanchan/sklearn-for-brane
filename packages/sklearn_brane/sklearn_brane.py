@@ -53,15 +53,6 @@ def _latest_matching_file(directory: Path, stem: str, suffix: str) -> Path:
     return matches[-1]
 
 
-def _copy_if_exists(source_dir: Path, stem: str, suffix: str, destination_dir: Path) -> None:
-    try:
-        source = _latest_matching_file(source_dir, stem, suffix)
-    except FileNotFoundError:
-        return
-    destination = destination_dir / source.name
-    destination.write_bytes(source.read_bytes())
-
-
 def _resolve_csv_path(filepath: str) -> Path:
     path = Path(filepath)
     if path.is_file():
@@ -103,6 +94,123 @@ def _build_model(model_name: str):
     if normalized == "svc":
         return SVC()
     raise ValueError(f"Unsupported model_name '{model_name}'.")
+
+
+def _model_dir_name(model_name: str) -> str:
+    return model_name.strip().lower().replace(" ", "_")
+
+
+def _load_model_bundle(model_data: str, pred_path: str, split_data: str):
+    model_root = Path(model_data)
+    pred_root = Path(pred_path)
+    split_root = Path(split_data)
+    model = joblib.load(_latest_matching_file(model_root, "model", ".joblib"))
+    meta = json.loads(_latest_matching_file(model_root, "metadata", ".json").read_text())
+    features = meta.get("feature_columns")
+    model_name = meta.get("model_name", "model")
+    y_test = pd.read_csv(_latest_matching_file(split_root, "y_test", ".csv")).iloc[:, 0]
+    y_pred = pd.read_csv(_latest_matching_file(pred_root, "predictions", ".csv")).iloc[:, 0]
+    x_train, _, y_train, _ = _load_split_frames(split_data)
+    if hasattr(model, "feature_importances_"):
+        importances = model.feature_importances_
+    elif hasattr(model, "coef_"):
+        importances = np.abs(model.coef_).flatten()
+    else:
+        importances = None
+    return model, meta, features, model_name, y_test, y_pred, x_train, y_train, importances
+
+
+def _save_confusion_matrix_png(confusion_path: Path, cm: np.ndarray) -> None:
+    import os
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.title("Confusion Matrix")
+    plt.tight_layout()
+    plt.savefig(confusion_path, format="png", bbox_inches="tight")
+    plt.close()
+
+
+def _save_feature_importance_png(feature_plot_path: Path, features: list[str], importances: np.ndarray) -> None:
+    import os
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(6, 4))
+    idx = np.argsort(importances)[::-1]
+    plt.bar(np.array(features)[idx], np.array(importances)[idx])
+    plt.xticks(rotation=45, ha="right")
+    plt.title("Feature Importance")
+    plt.tight_layout()
+    plt.savefig(feature_plot_path, format="png", bbox_inches="tight")
+    plt.close()
+
+
+def _write_model_bundle(output_dir: Path, model_data: str, pred_path: str, split_data: str, cv: int = 5) -> None:
+    stamp = _timestamp()
+    model, _, features, model_name, y_test, y_pred, x_train, y_train, importances = _load_model_bundle(
+        model_data, pred_path, split_data
+    )
+    cm = confusion_matrix(y_test, y_pred)
+    acc = accuracy_score(y_test, y_pred)
+
+    confusion_path = _timestamped_path(output_dir, f"{model_name}_confusion_matrix", ".png", stamp)
+    _save_confusion_matrix_png(confusion_path, cm)
+
+    classification_report_path = _timestamped_path(
+        output_dir, f"{model_name}_classification_report", ".csv", stamp
+    )
+    pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose().to_csv(
+        classification_report_path
+    )
+
+    cv_scores = cross_val_score(_build_model(model_name), x_train, y_train, cv=cv, scoring="accuracy")
+    cv_scores_path = _timestamped_path(
+        output_dir, f"{model_name}_cross_validation_scores", ".csv", stamp
+    )
+    pd.DataFrame({"fold": list(range(1, len(cv_scores) + 1)), "accuracy": cv_scores}).to_csv(
+        cv_scores_path, index=False
+    )
+
+    summary_payload = {
+        "model_name": model_name,
+        "accuracy": round(float(acc), 6),
+        "classification_report_csv": classification_report_path.name,
+        "cross_validation_scores_csv": cv_scores_path.name,
+        "cross_validation_mean_accuracy": round(float(cv_scores.mean()), 6),
+        "cross_validation_std_accuracy": round(float(cv_scores.std()), 6),
+    }
+
+    if importances is not None and features is not None:
+        ranking = sorted(zip(features, importances), key=lambda item: -item[1])
+        feature_csv_path = _timestamped_path(output_dir, f"{model_name}_feature_importance", ".csv", stamp)
+        top_features_path = _timestamped_path(output_dir, f"{model_name}_top_features", ".json", stamp)
+        pd.DataFrame(ranking, columns=["feature", "importance"]).to_csv(feature_csv_path, index=False)
+        _save_json(
+            top_features_path,
+            [{"feature": name, "importance": round(float(score), 6)} for name, score in ranking[:5]],
+        )
+        summary_payload["feature_importance_csv"] = feature_csv_path.name
+        summary_payload["top_features_json"] = top_features_path.name
+        feature_plot_path = _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp)
+        _save_feature_importance_png(feature_plot_path, features, importances)
+        summary_payload["feature_importance_png"] = feature_plot_path.name
+
+    summary_path = _timestamped_path(output_dir, f"{model_name}_results_summary", ".json", stamp)
+    _save_json(summary_path, summary_payload)
 
 
 def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
@@ -245,10 +353,7 @@ def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
     pd.DataFrame(classification_report(y_test, y_pred, output_dict=True)).transpose().to_csv(report_path)
     summary = {"accuracy": round(float(acc), 6), "classification_report_csv": str(report_path)}
     _save_json(summary_path, summary)
-    result = (
-        f"Accuracy: {acc:.4f}\\n"
-        f"Saved evaluation files: {summary_path.name}, {report_path.name}"
-    )
+    result = f"Accuracy: {acc:.4f}"
     _log(f"Saved classification report to {report_path}")
     _log(f"Saved summary to {summary_path}")
     print(f'output: "{result}"')
@@ -280,9 +385,6 @@ def feature_importance(model_data: str) -> None:
     lines = ["Top 5 features:"]
     for name, score in top_five:
         lines.append(f"  {name}: {score:.4f}")
-    lines.append(
-        f"Saved feature importance files: {csv_path.name}, {summary_path.name}"
-    )
     result = "\\n".join(lines)
     _log(f"Saved full feature ranking to {csv_path}")
     _log(f"Saved top 5 feature summary to {summary_path}")
@@ -299,70 +401,39 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     pd.DataFrame(
         {"fold": list(range(1, len(scores) + 1)), "accuracy": scores}
     ).to_csv(scores_path, index=False)
-    result = (
-        f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})\\n"
-        f"Saved cross-validation file: {scores_path.name}"
-    )
+    result = f"Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"
     _log(f"Saved cross-validation scores to {scores_path}")
     print(f'output: "{result}"')
 
 def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
     _log("Generating plots...")
     stamp = _timestamp()
-    import os
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
-    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
-    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
-
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    model_root = Path(model_data)
-    model = joblib.load(_latest_matching_file(model_root, "model", ".joblib"))
-    meta = json.loads(_latest_matching_file(model_root, "metadata", ".json").read_text())
-    features = meta.get("feature_columns")
-    y_test = pd.read_csv(_latest_matching_file(Path(split_data), "y_test", ".csv")).iloc[:, 0]
-    y_pred = pd.read_csv(_latest_matching_file(Path(pred_path), "predictions", ".csv")).iloc[:, 0]
-
-    cm = confusion_matrix(y_test, y_pred)
-    if hasattr(model, "feature_importances_"):
-        importances = model.feature_importances_
-    elif hasattr(model, "coef_"):
-        importances = np.abs(model.coef_).flatten()
-    else:
-        importances = None
-
-    output_dir = _ensure_result_dir("sklearn_results")
+    _, meta, features, _, y_test, y_pred, _, _, importances = _load_model_bundle(
+        model_data, pred_path, split_data
+    )
+    output_dir = _ensure_result_dir("plots")
     confusion_path = _timestamped_path(output_dir, "confusion_matrix", ".png", stamp)
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title("Confusion Matrix")
-    plt.tight_layout()
-    plt.savefig(confusion_path, format="png", bbox_inches="tight")
-    plt.close()
+    _save_confusion_matrix_png(confusion_path, confusion_matrix(y_test, y_pred))
     if importances is not None and features is not None:
         feature_plot_path = _timestamped_path(output_dir, "feature_importance", ".png", stamp)
-        plt.figure(figsize=(6, 4))
-        idx = np.argsort(importances)[::-1]
-        plt.bar(np.array(features)[idx], np.array(importances)[idx])
-        plt.xticks(rotation=45, ha="right")
-        plt.title("Feature Importance")
-        plt.tight_layout()
-        plt.savefig(feature_plot_path, format="png", bbox_inches="tight")
-        plt.close()
-        _log(f"Saved feature importance plot to {feature_plot_path}")
-    _log(f"Saved confusion matrix plot to {confusion_path}")
+        _save_feature_importance_png(feature_plot_path, features, importances)
+    _emit_result(output_dir)
 
-    _copy_if_exists(Path(pred_path), "predictions", ".csv", output_dir)
-    _copy_if_exists(Path(pred_path), "y_test", ".csv", output_dir)
-    _copy_if_exists(Path(pred_path), "X_test", ".csv", output_dir)
-    _copy_if_exists(RESULT_ROOT, "results_summary", ".json", output_dir)
-    _copy_if_exists(RESULT_ROOT, "classification_report", ".csv", output_dir)
-    _copy_if_exists(RESULT_ROOT, "feature_importance", ".csv", output_dir)
-    _copy_if_exists(RESULT_ROOT, "top_features", ".json", output_dir)
-    _copy_if_exists(RESULT_ROOT, "cross_validation_scores", ".csv", output_dir)
 
+def bundle_results(
+    rf_predictions: str,
+    rf_model_data: str,
+    lr_predictions: str,
+    lr_model_data: str,
+    split_data: str,
+    target_col: str,
+) -> None:
+    _log("Bundling final results...")
+    output_dir = _ensure_result_dir("sklearn_results")
+    rf_output_dir = output_dir / "random_forest"
+    lr_output_dir = output_dir / "logistic_regression"
+    rf_output_dir.mkdir(parents=True, exist_ok=True)
+    lr_output_dir.mkdir(parents=True, exist_ok=True)
+    _write_model_bundle(rf_output_dir, rf_model_data, rf_predictions, split_data)
+    _write_model_bundle(lr_output_dir, lr_model_data, lr_predictions, split_data)
     _emit_result(output_dir)

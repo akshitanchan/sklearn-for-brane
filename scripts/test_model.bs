@@ -13,11 +13,9 @@ on "worker1" {
 
     println("Training Random Forest...");
     let model := fit_model(scaled, "target", "random_forest");
-    println("Saved model files to /result.");
 
     println("Running predictions...");
     let predictions := predict(model, scaled);
-    println("Saved prediction files to /result.");
 
     println("Model smoke test complete.");
     println(model);

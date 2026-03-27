@@ -59,5 +59,14 @@ if __name__ == "__main__":
             _env("SPLIT_DATA"),
             _env("TARGET_COL"),
         )
+    elif command == "bundle_results":
+        sklearn_brane.bundle_results(
+            _env("RF_PREDICTIONS"),
+            _env("RF_MODEL_DATA"),
+            _env("LR_PREDICTIONS"),
+            _env("LR_MODEL_DATA"),
+            _env("SPLIT_DATA"),
+            _env("TARGET_COL"),
+        )
     else:
         raise ValueError(f"Unknown command '{command}'.")

@@ -7,11 +7,9 @@ on "worker1" {
 
     println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
-    println("Saved split files to /result.");
 
     println("Scaling features...");
     let scaled := scale_features(split, "standard");
-    println("Saved scaled data to /result.");
 
     println("Preprocess smoke test complete.");
     println(split);

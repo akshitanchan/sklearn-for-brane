@@ -7,19 +7,15 @@ on "worker1" {
 
     println("Splitting data...");
     let split := load_and_split(data, "target", "0.2");
-    println("Saved split files to /result.");
 
     println("Scaling features...");
     let scaled := scale_features(split, "standard");
-    println("Saved scaled data to /result.");
 
     println("Training Random Forest...");
     let model := fit_model(scaled, "target", "random_forest");
-    println("Saved model files to /result.");
 
     println("Running predictions...");
     let predictions := predict(model, scaled);
-    println("Saved prediction files to /result.");
 
     println("Evaluating predictions...");
     let evaluation := evaluate(predictions, scaled, "target");
