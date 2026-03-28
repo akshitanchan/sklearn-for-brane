@@ -37,6 +37,8 @@ These cover the main classification pipeline:
 - inspect feature importance
 - measure cross-validation performance
 
+These are the main **scikit-learn style wrapped actions** in the project. They correspond directly to ML preprocessing, training, prediction, and evaluation steps.
+
 ### Extended preprocessing actions
 
 - `impute_missing`
@@ -60,6 +62,10 @@ Its actions are:
 This package demonstrates Brane composability:
 - `sklearn_brane` produces model outputs
 - `sklearn_viz` consumes those outputs and creates the final result datasets
+
+In this package:
+- `plot_confusion_matrix` and `plot_feature_importance` are visualization-oriented wrappers
+- `bundle_core_results` and `bundle_results` are **Brane workflow helper actions**, not direct scikit-learn equivalents
 
 ## Core vs Extended
 
