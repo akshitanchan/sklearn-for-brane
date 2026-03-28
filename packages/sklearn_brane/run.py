@@ -27,12 +27,14 @@ if __name__ == "__main__":
     elif command == "impute_missing":
         sklearn_brane.impute_missing(
             _env("FILEPATH"),
+            _env("COLUMNS"),
             _env("STRATEGY"),
         )
     elif command == "encode_labels":
         sklearn_brane.encode_labels(
             _env("FILEPATH"),
             _env("COLUMNS"),
+            _env("METHOD"),
         )
     elif command == "fit_model":
         sklearn_brane.fit_model(
@@ -66,17 +68,6 @@ if __name__ == "__main__":
         sklearn_brane.plot_results(
             _env("PREDICTIONS"),
             _env("MODEL_DATA"),
-            _env("SPLIT_DATA"),
-            _env("TARGET_COL"),
-        )
-    elif command == "bundle_results":
-        sklearn_brane.bundle_results(
-            _env("RF_PREDICTIONS"),
-            _env("RF_MODEL_DATA"),
-            _env("LR_PREDICTIONS"),
-            _env("LR_MODEL_DATA"),
-            _env("DT_PREDICTIONS"),
-            _env("DT_MODEL_DATA"),
             _env("SPLIT_DATA"),
             _env("TARGET_COL"),
         )

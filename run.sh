@@ -2,10 +2,6 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PKG_DIR="$ROOT_DIR/packages/sklearn_brane"
-
-VERSION="$(awk '/^version:/ { print $2; exit }' "$PKG_DIR/container.yml")"
-IMAGE_TAR="$HOME/.local/share/brane/packages/sklearn_brane/$VERSION/image.tar"
 
 prompt_yes_no() {
     local message="$1"
@@ -14,40 +10,55 @@ prompt_yes_no() {
     [[ "$reply" =~ ^[Yy]$ ]]
 }
 
-prompt_pipeline() {
+prompt_mode() {
     local reply
-    read -r -p "Which pipeline do you want to run? [breast/heart] " reply
+    read -r -p "Which mode do you want to run? [core/extended] " reply
     case "${reply,,}" in
-        heart)
-            PIPELINE_PATH="$ROOT_DIR/pipeline_heart.bs"
+        extended)
+            PIPELINE_PATH="$ROOT_DIR/pipeline_extended.bs"
             RESULT_NAME="heart_results"
             RESULT_DEST="$ROOT_DIR/results/heart_disease"
-            PIPELINE_LABEL="heart disease"
+            PIPELINE_LABEL="extended"
             ;;
         *)
             PIPELINE_PATH="$ROOT_DIR/pipeline.bs"
-            RESULT_NAME="sklearn_results"
+            RESULT_NAME="sklearn_report"
             RESULT_DEST="$ROOT_DIR/results/breast_cancer"
-            PIPELINE_LABEL="breast cancer"
+            PIPELINE_LABEL="core"
             ;;
     esac
 }
 
-rebuild_package() {
-    echo "Building sklearn_brane version $VERSION..."
+build_package() {
+    local package_name="$1"
+    local package_dir="$ROOT_DIR/packages/$package_name"
+    local version
+    local image_tar
+
+    version="$(awk '/^version:/ { print $2; exit }' "$package_dir/container.yml")"
+    image_tar="$HOME/.local/share/brane/packages/$package_name/$version/image.tar"
+
+    echo "Building $package_name version $version..."
     (
-        cd "$PKG_DIR"
+        cd "$package_dir"
         brane build ./container.yml --init ~/branelet
     )
 
-    echo "Loading Docker image from $IMAGE_TAR..."
-    docker load -i "$IMAGE_TAR"
+    echo "Loading Docker image from $image_tar..."
+    docker load -i "$image_tar"
 
-    echo "Pushing sklearn_brane..."
-    brane push sklearn_brane
+    echo "Pushing $package_name..."
+    brane push "$package_name"
 }
 
-run_tests() {
+rebuild_packages() {
+    build_package "sklearn_brane"
+    if [[ "$PIPELINE_LABEL" == "extended" ]]; then
+        build_package "sklearn_viz"
+    fi
+}
+
+run_core_tests() {
     echo "Running preprocess smoke test..."
     brane run "$ROOT_DIR/scripts/test_preprocess.bs" --remote
 
@@ -56,6 +67,11 @@ run_tests() {
 
     echo "Running visualization smoke test..."
     brane run "$ROOT_DIR/scripts/test_viz.bs" --remote
+}
+
+run_extension_test() {
+    echo "Running extension smoke test..."
+    brane run "$ROOT_DIR/scripts/test_extended.bs" --remote
 }
 
 copy_results() {
@@ -70,19 +86,27 @@ copy_results() {
     echo "Copied committed results to $RESULT_DEST"
 }
 
-if prompt_yes_no "Do you want to rebuild the package first?"; then
-    rebuild_package
+prompt_mode
+echo "Selected $PIPELINE_LABEL mode."
+
+if prompt_yes_no "Do you want to rebuild the required packages first?"; then
+    rebuild_packages
 else
     echo "Skipping rebuild."
 fi
 
-prompt_pipeline
-echo "Selected $PIPELINE_LABEL pipeline."
-
-if [[ "$RESULT_NAME" == "sklearn_results" ]] && prompt_yes_no "Do you want to run the smoke tests first?"; then
-    run_tests
+if [[ "$PIPELINE_LABEL" == "core" ]]; then
+    if prompt_yes_no "Do you want to run the core smoke tests first?"; then
+        run_core_tests
+    else
+        echo "Skipping core smoke tests."
+    fi
 else
-    echo "Skipping smoke tests."
+    if prompt_yes_no "Do you want to run the extension smoke test first?"; then
+        run_extension_test
+    else
+        echo "Skipping extension smoke test."
+    fi
 fi
 
 mkdir -p "$HOME/.local/share/brane/data/$RESULT_NAME/data"

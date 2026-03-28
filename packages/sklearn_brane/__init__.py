@@ -1,5 +1,4 @@
 from .sklearn_brane import (
-    bundle_results,
     cross_validate,
     encode_labels,
     evaluate,
@@ -13,7 +12,6 @@ from .sklearn_brane import (
 )
 
 __all__ = [
-    "bundle_results",
     "cross_validate",
     "encode_labels",
     "evaluate",

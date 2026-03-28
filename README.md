@@ -31,10 +31,9 @@ Each function reads from an IntermediateResult path, performs one sklearn operat
 
 ## Project Structure
 
-```
+```  
 sklearn-brane/
 ├── README.md
-├── SOLUTION.md
 ├── build.sh
 ├── pipeline.bs
 ├── data/
@@ -59,8 +58,9 @@ sklearn-brane/
 
 1. **Build and push the package:**
 	```bash
+	VERSION=$(awk '/^version:/ { print $2; exit }' packages/sklearn_brane/container.yml)
 	brane build ./packages/sklearn_brane/container.yml --init ~/branelet
-	docker load -i ~/.local/share/brane/packages/sklearn_brane/1.0.0/image.tar
+	docker load -i ~/.local/share/brane/packages/sklearn_brane/$VERSION/image.tar
 	brane push sklearn_brane
 	```
 
@@ -78,15 +78,15 @@ sklearn-brane/
 
 3. **Inspect the committed results:**
 	```bash
-	brane data path sklearn_results
-	# Inspect the returned directory for predictions.csv, results_summary.json, classification_report.csv,
-	# confusion_matrix.png, feature_importance.png, and other saved outputs
+	brane data path sklearn_report
+	# Inspect the returned directory for confusion_matrix.png, feature_importance.png,
+	# plot_manifest.json, and other saved outputs
 	```
 
 ## Visualization
 
 - The `plot_results` function generates `confusion_matrix.png` and `feature_importance.png`.
-- The pipeline commits the output bundle as `sklearn_results`.
+- The pipeline commits the output as `sklearn_report`.
 
 ## Requirements
 

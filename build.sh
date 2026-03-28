@@ -2,9 +2,29 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PKG_DIR="$ROOT_DIR/packages/sklearn_brane"
-VERSION="$(awk '/^version:/ { print $2; exit }' "$PKG_DIR/container.yml")"
-IMAGE_TAR="$HOME/.local/share/brane/packages/sklearn_brane/$VERSION/image.tar"
+MODE="${1:-core}"
+
+build_package() {
+    local package_name="$1"
+    local package_dir="$ROOT_DIR/packages/$package_name"
+    local version
+    local image_tar
+
+    version="$(awk '/^version:/ { print $2; exit }' "$package_dir/container.yml")"
+    image_tar="$HOME/.local/share/brane/packages/$package_name/$version/image.tar"
+
+    echo "Building $package_name package version $version..."
+    (
+        cd "$package_dir"
+        brane build ./container.yml --init ~/branelet
+    )
+
+    echo "Loading image into docker from $image_tar..."
+    docker load -i "$image_tar"
+
+    echo "Pushing $package_name to registry..."
+    brane push "$package_name"
+}
 
 register_dataset() {
     local name="$1"
@@ -19,16 +39,10 @@ register_dataset() {
 register_dataset "breast_cancer" "$ROOT_DIR/data/breast_cancer/data.yml"
 register_dataset "heart_disease" "$ROOT_DIR/data/heart_disease/data.yml"
 
-echo "Building sklearn_brane package version $VERSION..."
-(
-    cd "$PKG_DIR"
-    brane build ./container.yml --init ~/branelet
-)
+build_package "sklearn_brane"
 
-echo "Loading image into docker from $IMAGE_TAR..."
-docker load -i "$IMAGE_TAR"
-
-echo "Pushing to registry..."
-brane push sklearn_brane
+if [[ "$MODE" == "extended" ]]; then
+    build_package "sklearn_viz"
+fi
 
 echo "Done. Run 'brane search' to verify."

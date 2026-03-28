@@ -1,5 +1,5 @@
 name: sklearn_brane
-version: 1.0.11
+version: 1.1.0
 kind: ecu
 
 files:
@@ -55,6 +55,8 @@ actions:
     input:
       - name: filepath
         type: IntermediateResult
+      - name: columns
+        type: string
       - name: strategy
         type: string
     output:
@@ -69,6 +71,8 @@ actions:
       - name: filepath
         type: IntermediateResult
       - name: columns
+        type: string
+      - name: method
         type: string
     output:
       - name: result
@@ -153,31 +157,6 @@ actions:
       - name: predictions
         type: IntermediateResult
       - name: model_data
-        type: IntermediateResult
-      - name: split_data
-        type: IntermediateResult
-      - name: target_col
-        type: string
-    output:
-      - name: result
-        type: IntermediateResult
-
-  bundle_results:
-    command:
-      args:
-        - bundle_results
-    input:
-      - name: rf_predictions
-        type: IntermediateResult
-      - name: rf_model_data
-        type: IntermediateResult
-      - name: lr_predictions
-        type: IntermediateResult
-      - name: lr_model_data
-        type: IntermediateResult
-      - name: dt_predictions
-        type: IntermediateResult
-      - name: dt_model_data
         type: IntermediateResult
       - name: split_data
         type: IntermediateResult

@@ -1,0 +1,84 @@
+name: sklearn_viz
+version: 1.0.0
+kind: ecu
+
+files:
+  - sklearn_viz.py
+  - run.py
+  - requirements.txt
+  - __init__.py
+
+dependencies:
+  - python3
+  - python3-pip
+
+install:
+  - pip3 install scikit-learn==1.2.2 pandas==2.0.1 numpy==1.23.5 joblib==1.2.0 matplotlib==3.7.1 seaborn==0.12.2
+
+entrypoint:
+  kind: task
+  exec: run.py
+
+actions:
+  plot_confusion_matrix:
+    command:
+      args:
+        - plot_confusion_matrix
+    input:
+      - name: predictions
+        type: IntermediateResult
+      - name: split_data
+        type: IntermediateResult
+      - name: target_col
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
+
+  plot_feature_importance:
+    command:
+      args:
+        - plot_feature_importance
+    input:
+      - name: model_data
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult
+
+  bundle_results:
+    command:
+      args:
+        - bundle_results
+    input:
+      - name: rf_predictions
+        type: IntermediateResult
+      - name: rf_model_data
+        type: IntermediateResult
+      - name: rf_confusion_plot
+        type: IntermediateResult
+      - name: rf_feature_plot
+        type: IntermediateResult
+      - name: lr_predictions
+        type: IntermediateResult
+      - name: lr_model_data
+        type: IntermediateResult
+      - name: lr_confusion_plot
+        type: IntermediateResult
+      - name: lr_feature_plot
+        type: IntermediateResult
+      - name: dt_predictions
+        type: IntermediateResult
+      - name: dt_model_data
+        type: IntermediateResult
+      - name: dt_confusion_plot
+        type: IntermediateResult
+      - name: dt_feature_plot
+        type: IntermediateResult
+      - name: split_data
+        type: IntermediateResult
+      - name: target_col
+        type: string
+    output:
+      - name: result
+        type: IntermediateResult
