@@ -186,7 +186,79 @@ def _save_feature_importance_png(feature_plot_path: Path, features: list[str], i
     plt.close()
 
 
-def _write_model_bundle(output_dir: Path, model_data: str, pred_path: str, split_data: str, cv: int = 5) -> None:
+def _save_model_comparison_png(comparison_plot_path: Path, rows: list[dict]) -> None:
+    import os
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
+    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
+    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    ordered_rows = sorted(
+        rows,
+        key=lambda row: (row["accuracy"], row["cross_validation_mean_accuracy"]),
+        reverse=True,
+    )
+    model_names = [row["model_name"].replace("_", " ").title() for row in ordered_rows]
+    test_accuracy = [row["accuracy"] for row in ordered_rows]
+    cv_accuracy = [row["cross_validation_mean_accuracy"] for row in ordered_rows]
+    cv_std = [row["cross_validation_std_accuracy"] for row in ordered_rows]
+    y = np.arange(len(model_names))
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+    fig.patch.set_facecolor("#f7f4ea")
+    ax.set_facecolor("#fffdf8")
+
+    test_colors = ["#0d3b66", "#1d6996", "#4aa8c0"]
+    cv_colors = ["#f4d35e", "#ee964b", "#f95738"]
+
+    ax.barh(y + 0.18, test_accuracy, height=0.32, color=test_colors[: len(y)], label="Test accuracy")
+    ax.barh(y - 0.18, cv_accuracy, height=0.32, color=cv_colors[: len(y)], label="CV mean accuracy")
+
+    for idx, (test, cv, std) in enumerate(zip(test_accuracy, cv_accuracy, cv_std)):
+        ax.text(min(test + 0.01, 0.985), idx + 0.18, f"{test:.3f}", va="center", ha="left", fontsize=9, color="#102a43")
+        ax.text(min(cv + 0.01, 0.985), idx - 0.18, f"{cv:.3f}", va="center", ha="left", fontsize=9, color="#7c2d12")
+        ax.text(0.995, idx - 0.18, f"±{std:.3f}", va="center", ha="right", fontsize=8, color="#6b7280")
+
+    best_idx = 0
+    ax.scatter(
+        [test_accuracy[best_idx]],
+        [best_idx + 0.18],
+        s=160,
+        marker="*",
+        color="#c1121f",
+        zorder=5,
+        label="Top test score",
+    )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(model_names, fontsize=10)
+    ax.invert_yaxis()
+    ax.set_xlim(0, 1.02)
+    ax.set_xlabel("Accuracy", fontsize=11)
+    ax.set_title("Model Comparison Scoreboard", fontsize=15, weight="bold", pad=12)
+    ax.grid(axis="x", linestyle="--", alpha=0.25)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.legend(loc="lower right", frameon=False)
+
+    ax.text(
+        0.0,
+        1.04,
+        "Test accuracy and cross-validation mean for each model",
+        transform=ax.transAxes,
+        fontsize=10,
+        color="#52606d",
+    )
+
+    plt.tight_layout()
+    plt.savefig(comparison_plot_path, format="png", bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def _write_model_bundle(output_dir: Path, model_data: str, pred_path: str, split_data: str, cv: int = 5) -> dict:
     stamp = _timestamp()
     model, _, features, model_name, y_test, y_pred, x_train, y_train, importances = _load_model_bundle(
         model_data, pred_path, split_data
@@ -238,6 +310,8 @@ def _write_model_bundle(output_dir: Path, model_data: str, pred_path: str, split
 
     summary_path = _timestamped_path(output_dir, f"{model_name}_results_summary", ".json", stamp)
     _save_json(summary_path, summary_payload)
+    summary_payload["results_summary_json"] = summary_path.name
+    return summary_payload
 
 
 def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
@@ -535,15 +609,51 @@ def bundle_results(
     rf_model_data: str,
     lr_predictions: str,
     lr_model_data: str,
+    dt_predictions: str,
+    dt_model_data: str,
     split_data: str,
     target_col: str,
 ) -> None:
     _log("Bundling final results...")
+    stamp = _timestamp()
     output_dir = _ensure_result_dir("sklearn_results")
     rf_output_dir = output_dir / "random_forest"
     lr_output_dir = output_dir / "logistic_regression"
+    dt_output_dir = output_dir / "decision_tree"
     rf_output_dir.mkdir(parents=True, exist_ok=True)
     lr_output_dir.mkdir(parents=True, exist_ok=True)
-    _write_model_bundle(rf_output_dir, rf_model_data, rf_predictions, split_data)
-    _write_model_bundle(lr_output_dir, lr_model_data, lr_predictions, split_data)
+    dt_output_dir.mkdir(parents=True, exist_ok=True)
+    rows = [
+        _write_model_bundle(rf_output_dir, rf_model_data, rf_predictions, split_data),
+        _write_model_bundle(lr_output_dir, lr_model_data, lr_predictions, split_data),
+        _write_model_bundle(dt_output_dir, dt_model_data, dt_predictions, split_data),
+    ]
+
+    comparison_csv_path = _timestamped_path(output_dir, "model_comparison", ".csv", stamp)
+    comparison_json_path = _timestamped_path(output_dir, "model_comparison", ".json", stamp)
+    comparison_plot_path = _timestamped_path(output_dir, "model_comparison", ".png", stamp)
+    pd.DataFrame(
+        [
+            {
+                "model_name": row["model_name"],
+                "accuracy": row["accuracy"],
+                "cross_validation_mean_accuracy": row["cross_validation_mean_accuracy"],
+                "cross_validation_std_accuracy": row["cross_validation_std_accuracy"],
+            }
+            for row in rows
+        ]
+    ).sort_values(by=["accuracy", "cross_validation_mean_accuracy"], ascending=False).to_csv(
+        comparison_csv_path, index=False
+    )
+    best_model = max(rows, key=lambda row: (row["accuracy"], row["cross_validation_mean_accuracy"]))
+    _save_json(
+        comparison_json_path,
+        {
+            "models": rows,
+            "best_model": best_model["model_name"],
+            "comparison_csv": comparison_csv_path.name,
+            "comparison_plot_png": comparison_plot_path.name,
+        },
+    )
+    _save_model_comparison_png(comparison_plot_path, rows)
     _emit_result(output_dir)

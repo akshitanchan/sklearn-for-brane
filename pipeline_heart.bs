@@ -52,9 +52,27 @@ on "worker1" {
     let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
     println(lr_cv);
 
+    println("Training Decision Tree...");
+    let dt_model := fit_model(scaled, "target", "decision_tree");
+
+    println("Running predictions...");
+    let dt_predictions := predict(dt_model, scaled);
+
+    println("Evaluating predictions...");
+    let dt_eval := evaluate(dt_predictions, scaled, "target");
+    println(dt_eval);
+
+    println("Calculating feature importance...");
+    let dt_importance := feature_importance(dt_model);
+    println(dt_importance);
+
+    println("Running cross-validation...");
+    let dt_cv := cross_validate(scaled, "target", "decision_tree", "5");
+    println(dt_cv);
+
     println("Saving final results...");
-    let results := bundle_results(rf_predictions, rf_model, lr_predictions, lr_model, scaled, "target");
-    println("Saved results to /result/random_forest and /result/logistic_regression.");
+    let results := bundle_results(rf_predictions, rf_model, lr_predictions, lr_model, dt_predictions, dt_model, scaled, "target");
+    println("Saved results to /result/random_forest, /result/logistic_regression, and /result/decision_tree.");
 
     println("Committing result bundle as heart_results...");
     return commit_result("heart_results", results);

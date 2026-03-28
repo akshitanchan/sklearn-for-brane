@@ -75,6 +75,8 @@ if __name__ == "__main__":
             _env("RF_MODEL_DATA"),
             _env("LR_PREDICTIONS"),
             _env("LR_MODEL_DATA"),
+            _env("DT_PREDICTIONS"),
+            _env("DT_MODEL_DATA"),
             _env("SPLIT_DATA"),
             _env("TARGET_COL"),
         )
