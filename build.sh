@@ -2,12 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODE="core"
 DATASET_MODE="${DATASET_MODE:-auto}"
 
 usage() {
     cat <<'EOF'
-Usage: bash build.sh [core|extended] [--force-datasets|--skip-datasets]
+Usage: bash build.sh [--force-datasets|--skip-datasets]
 
 Dataset handling:
   default / auto      Build datasets that are missing locally and skip ones that already exist.
@@ -26,9 +25,6 @@ dataset_exists() {
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            core|extended)
-                MODE="$1"
-                ;;
             --force-datasets|--rebuild-datasets)
                 DATASET_MODE="force"
                 ;;
