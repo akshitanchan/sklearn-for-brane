@@ -76,6 +76,12 @@ build_package() {
     brane push "$package_name"
 }
 
+ensure_result_dirs() {
+    mkdir -p "$HOME/.local/share/brane/data"
+    mkdir -p "$HOME/.local/share/brane/data/core_results/data"
+    mkdir -p "$HOME/.local/share/brane/data/extended_results/data"
+}
+
 register_dataset() {
     local name="$1"
     local manifest="$2"
@@ -108,6 +114,8 @@ register_dataset() {
 }
 
 parse_args "$@"
+
+ensure_result_dirs
 
 register_dataset "breast_cancer" "$ROOT_DIR/data/breast_cancer/data.yml"
 register_dataset "heart_disease" "$ROOT_DIR/data/heart_disease/data.yml"
