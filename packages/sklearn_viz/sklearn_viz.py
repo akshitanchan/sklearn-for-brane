@@ -161,7 +161,73 @@ def _bundle_model_artifacts(
     return manifest
 
 
-def _bundle_models(root_dir: Path, model_specs: list[tuple[str, str, str, str, str]], stamp: str) -> list[dict]:
+def _copy_bundle_file(source_dir: Path, source_name: str, destination: Path) -> str:
+    shutil.copy2(source_dir / source_name, destination)
+    return destination.name
+
+
+def _load_bundle_manifest(bundle_dir: str) -> tuple[Path, dict]:
+    bundle_path = Path(bundle_dir)
+    manifest_path = bundle_path / "bundle_manifest.json"
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"Could not find 'bundle_manifest.json' in bundled model directory '{bundle_dir}'."
+        )
+    return bundle_path, json.loads(manifest_path.read_text())
+
+
+def _merge_model_bundle(output_dir: Path, bundle_dir: str, stamp: str) -> dict:
+    source_dir, manifest = _load_bundle_manifest(bundle_dir)
+    model_name = manifest.get("model_name", output_dir.name)
+
+    merged = {
+        "model_name": model_name,
+        "metadata_json": _copy_bundle_file(
+            source_dir,
+            manifest["metadata_json"],
+            _timestamped_path(output_dir, f"{model_name}_metadata", ".json", stamp),
+        ),
+        "predictions_csv": _copy_bundle_file(
+            source_dir,
+            manifest["predictions_csv"],
+            _timestamped_path(output_dir, f"{model_name}_predictions", ".csv", stamp),
+        ),
+        "confusion_matrix_png": _copy_bundle_file(
+            source_dir,
+            manifest["confusion_matrix_png"],
+            _timestamped_path(output_dir, f"{model_name}_confusion_matrix", ".png", stamp),
+        ),
+        "feature_importance_png": _copy_bundle_file(
+            source_dir,
+            manifest["feature_importance_png"],
+            _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp),
+        ),
+        "feature_importance_csv": _copy_bundle_file(
+            source_dir,
+            manifest["feature_importance_csv"],
+            _timestamped_path(output_dir, f"{model_name}_feature_importance", ".csv", stamp),
+        ),
+        "top_features_json": _copy_bundle_file(
+            source_dir,
+            manifest["top_features_json"],
+            _timestamped_path(output_dir, f"{model_name}_top_features", ".json", stamp),
+        ),
+    }
+
+    bundle_manifest_path = _timestamped_path(
+        output_dir,
+        f"{model_name}_bundle_manifest",
+        ".json",
+        stamp,
+    )
+    _save_json(bundle_manifest_path, merged)
+    merged["bundle_manifest_json"] = bundle_manifest_path.name
+    return merged
+
+
+def _bundle_models(
+    root_dir: Path, model_specs: list[tuple[str, str, str, str, str]], stamp: str
+) -> list[dict]:
     rows = []
     for label, model_data, predictions, confusion_plot, feature_plot in model_specs:
         model_output_dir = root_dir / label
@@ -174,6 +240,19 @@ def _bundle_models(root_dir: Path, model_specs: list[tuple[str, str, str, str, s
             feature_plot,
             stamp,
         )
+        manifest["directory"] = label
+        rows.append(manifest)
+    return rows
+
+
+def _merge_model_bundles(
+    root_dir: Path, bundle_dirs: list[tuple[str, str]], stamp: str
+) -> list[dict]:
+    rows = []
+    for label, bundle_dir in bundle_dirs:
+        model_output_dir = root_dir / label
+        model_output_dir.mkdir(parents=True, exist_ok=True)
+        manifest = _merge_model_bundle(model_output_dir, bundle_dir, stamp)
         manifest["directory"] = label
         rows.append(manifest)
     return rows
@@ -228,38 +307,41 @@ def plot_feature_importance(model_data: str) -> None:
     return None
 
 
+def bundle_model_results(
+    predictions: str,
+    model_data: str,
+    confusion_plot: str,
+    feature_plot: str,
+) -> None:
+    _log("Bundling model branch results...")
+    stamp = _timestamp()
+    output_dir = _ensure_result_root()
+    manifest = _bundle_model_artifacts(
+        output_dir,
+        model_data,
+        predictions,
+        confusion_plot,
+        feature_plot,
+        stamp,
+    )
+    _save_json(output_dir / "bundle_manifest.json", manifest)
+    return None
+
+
 def bundle_core_results(
-    rf_predictions: str,
-    rf_model_data: str,
-    rf_confusion_plot: str,
-    rf_feature_plot: str,
-    lr_predictions: str,
-    lr_model_data: str,
-    lr_confusion_plot: str,
-    lr_feature_plot: str,
+    rf_bundle: str,
+    lr_bundle: str,
     target_col: str,
 ) -> None:
     _log("Bundling core results...")
     stamp = _timestamp()
     output_dir = _ensure_result_root()
 
-    rows = _bundle_models(
+    rows = _merge_model_bundles(
         output_dir,
         [
-            (
-                "random_forest",
-                rf_model_data,
-                rf_predictions,
-                rf_confusion_plot,
-                rf_feature_plot,
-            ),
-            (
-                "logistic_regression",
-                lr_model_data,
-                lr_predictions,
-                lr_confusion_plot,
-                lr_feature_plot,
-            ),
+            ("random_forest", rf_bundle),
+            ("logistic_regression", lr_bundle),
         ],
         stamp,
     )
@@ -276,50 +358,21 @@ def bundle_core_results(
 
 
 def bundle_results(
-    rf_predictions: str,
-    rf_model_data: str,
-    rf_confusion_plot: str,
-    rf_feature_plot: str,
-    lr_predictions: str,
-    lr_model_data: str,
-    lr_confusion_plot: str,
-    lr_feature_plot: str,
-    dt_predictions: str,
-    dt_model_data: str,
-    dt_confusion_plot: str,
-    dt_feature_plot: str,
-    split_data: str,
+    rf_bundle: str,
+    lr_bundle: str,
+    dt_bundle: str,
     target_col: str,
 ) -> None:
     _log("Bundling final results...")
     stamp = _timestamp()
     output_dir = _ensure_result_root()
-    _ = split_data
 
-    rows = _bundle_models(
+    rows = _merge_model_bundles(
         output_dir,
         [
-            (
-                "random_forest",
-                rf_model_data,
-                rf_predictions,
-                rf_confusion_plot,
-                rf_feature_plot,
-            ),
-            (
-                "logistic_regression",
-                lr_model_data,
-                lr_predictions,
-                lr_confusion_plot,
-                lr_feature_plot,
-            ),
-            (
-                "decision_tree",
-                dt_model_data,
-                dt_predictions,
-                dt_confusion_plot,
-                dt_feature_plot,
-            ),
+            ("random_forest", rf_bundle),
+            ("logistic_regression", lr_bundle),
+            ("decision_tree", dt_bundle),
         ],
         stamp,
     )

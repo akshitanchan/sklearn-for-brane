@@ -1,5 +1,5 @@
 name: sklearn_viz
-version: 1.1.0
+version: 2.0.0
 kind: ecu
 
 files:
@@ -46,27 +46,32 @@ actions:
       - name: result
         type: IntermediateResult
 
+  bundle_model_results:
+    command:
+      args:
+        - bundle_model_results
+    input:
+      - name: predictions
+        type: IntermediateResult
+      - name: model_data
+        type: IntermediateResult
+      - name: confusion_plot
+        type: IntermediateResult
+      - name: feature_plot
+        type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult
+
   bundle_core_results:
     command:
       args:
         - bundle_core_results
     input:
-      - name: rf_predictions
-        type: IntermediateResult
-      - name: rf_model_data
-        type: IntermediateResult
-      - name: rf_confusion_plot
-        type: IntermediateResult
-      - name: rf_feature_plot
-        type: IntermediateResult
-      - name: lr_predictions
-        type: IntermediateResult
-      - name: lr_model_data
-        type: IntermediateResult
-      - name: lr_confusion_plot
-        type: IntermediateResult
-      - name: lr_feature_plot
-        type: IntermediateResult
+      - name: rf_bundle
+        type: Data
+      - name: lr_bundle
+        type: Data
       - name: target_col
         type: string
     output:
@@ -78,32 +83,12 @@ actions:
       args:
         - bundle_results
     input:
-      - name: rf_predictions
-        type: IntermediateResult
-      - name: rf_model_data
-        type: IntermediateResult
-      - name: rf_confusion_plot
-        type: IntermediateResult
-      - name: rf_feature_plot
-        type: IntermediateResult
-      - name: lr_predictions
-        type: IntermediateResult
-      - name: lr_model_data
-        type: IntermediateResult
-      - name: lr_confusion_plot
-        type: IntermediateResult
-      - name: lr_feature_plot
-        type: IntermediateResult
-      - name: dt_predictions
-        type: IntermediateResult
-      - name: dt_model_data
-        type: IntermediateResult
-      - name: dt_confusion_plot
-        type: IntermediateResult
-      - name: dt_feature_plot
-        type: IntermediateResult
-      - name: split_data
-        type: IntermediateResult
+      - name: rf_bundle
+        type: Data
+      - name: lr_bundle
+        type: Data
+      - name: dt_bundle
+        type: Data
       - name: target_col
         type: string
     output:

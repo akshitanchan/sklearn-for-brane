@@ -1,99 +1,49 @@
 # scikit-learn wrapper for Brane
 
-`sklearn-for-brane` is a Brane project that wraps core scikit-learn functionality into Brane-callable actions and uses them in remote ML workflows. Brane is a workflow orchestration framework that lets packaged tasks run across distributed compute locations while keeping execution reproducible and data location-aware.
+`sklearn-for-brane` is a Brane project that wraps core scikit-learn functionality into Brane-callable actions and runs them across a small distributed setup. Brane is a workflow orchestration framework for packaged tasks, so this repo treats model branches as package actions that run on workers and then get merged into final result datasets.
 
 The project is split into two packages:
 
 - `sklearn_brane`
-  The main machine-learning package.
+  Main ML and preprocessing actions.
 - `sklearn_viz`
-  The visualization and result-bundling package.
+  Visualization and result-bundling actions.
 
-Together, they are used in:
-- a **core workflow** on the Breast Cancer dataset
-- an **extended workflow** on the Heart Disease dataset
+Together, they support:
+- a **core** two-worker flow on the Breast Cancer dataset
+- an **extended** two-worker flow on the Heart Disease dataset
 
-## Package 1: `sklearn_brane`
+## What is in this repo
 
-`sklearn_brane` contains the main ML and preprocessing actions.
+- `packages/sklearn_brane`
+  Split, scale, impute, encode, train, predict, evaluate, feature importance, and cross-validation.
+- `packages/sklearn_viz`
+  Confusion-matrix plotting, feature-importance plotting, single-model bundling, and final result aggregation.
+- `scripts/core_*_branch.bs`
+  Core branch workflows:
+  - `worker1`: Random Forest
+  - `worker2`: Logistic Regression
+- `scripts/extended_*_branch.bs`
+  Extended branch workflows:
+  - `worker1`: Random Forest and Decision Tree
+  - `worker2`: Logistic Regression
+- `pipeline.bs`
+  Core merge workflow. Reads `core_rf_branch` and `core_lr_branch`, then commits `core_results`.
+- `pipeline_extended.bs`
+  Extended merge workflow. Reads `extended_rf_branch`, `extended_lr_branch`, and `extended_dt_branch`, then commits `extended_results`.
+- `run.sh`
+  Official end-to-end entrypoint. Runs branch workflows first, then the merge workflow.
 
-### Core actions
+## Datasets
 
-- `load_and_split`
-- `scale_features`
-- `fit_model`
-- `predict`
-- `evaluate`
-- `feature_importance`
-- `cross_validate`
-
-These cover the main classification pipeline:
-- load data
-- split data
-- scale features
-- train a model
-- predict
-- evaluate results
-- inspect feature importance
-- measure cross-validation performance
-
-These are the main **scikit-learn style wrapped actions** in the project. They correspond directly to ML preprocessing, training, prediction, and evaluation steps.
-
-### Extended preprocessing actions
-
-- `impute_missing`
-- `encode_labels`
-
-These are used for the Heart Disease extension, where the dataset has missing values and categorical columns.
-
-## Package 2: `sklearn_viz`
-
-`sklearn_viz` is the second Brane package in the project.
-
-It is responsible for visualization and final artifact bundling.
-
-Its actions are:
-
-- `plot_confusion_matrix`
-- `plot_feature_importance`
-- `bundle_core_results`
-- `bundle_results`
-
-This package demonstrates Brane composability:
-- `sklearn_brane` produces model outputs
-- `sklearn_viz` consumes those outputs and creates the final result datasets
-
-In this package:
-- `plot_confusion_matrix` and `plot_feature_importance` are visualization-oriented wrappers
-- `bundle_core_results` and `bundle_results` are **Brane workflow helper actions**, not direct scikit-learn equivalents
-
-## Core vs Extended
-
-### Core workflow
-
-The core workflow is defined in `pipeline.bs`.
-
-It:
-- uses the `breast_cancer` dataset
-- trains Random Forest and Logistic Regression
-- runs the main sklearn wrapper actions
-- uses `sklearn_viz.bundle_core_results`
-- commits the final result as `core_results`
-
-### Extended workflow
-
-The extended workflow is defined in `pipeline_extended.bs`.
-
-It:
-- uses the `heart_disease` dataset
-- adds `impute_missing` and `encode_labels`
-- trains Random Forest, Logistic Regression, and Decision Tree
-- uses `sklearn_viz.bundle_results`
-- commits the final result as `extended_results`
+- `breast_cancer`
+  Breast Cancer Wisconsin (Diagnostic), used by the core flow.
+- `heart_disease`
+  Heart Disease dataset, used by the extended flow.
 
 ## Build
 
-Build and push the packages with:
+Build and push both packages:
 
 ```bash
 bash build.sh
@@ -106,32 +56,27 @@ Dataset handling modes:
 
 ## Run
 
-Run the helper script:
+The supported end-to-end entrypoint is:
 
 ```bash
-bash run.sh
+bash run.sh core
+bash run.sh extended
 ```
 
-Or run the workflows directly:
+`run.sh`:
+- optionally rebuilds packages
+- optionally runs smoke tests
+- removes stale branch datasets
+- runs the worker-specific branch workflows
+- runs the merge workflow
+- copies final results into `results/core` or `results/extended`
+
+You can still run the merge workflows directly, but they only work after the branch datasets already exist:
 
 ```bash
 brane run pipeline.bs --remote
-brane data path core_results
-
 brane run pipeline_extended.bs --remote
-brane data path extended_results
 ```
-
-## Repo structure
-
-- `packages/sklearn_brane`
-- `packages/sklearn_viz`
-- `pipeline.bs`
-- `pipeline_extended.bs`
-- `scripts/test_preprocess.bs`
-- `scripts/test_model.bs`
-- `scripts/test_viz.bs`
-- `scripts/test_extended.bs`
 
 ## References
 

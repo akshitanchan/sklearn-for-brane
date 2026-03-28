@@ -23,33 +23,24 @@ if __name__ == "__main__":
         sklearn_viz.plot_feature_importance(
             _env("MODEL_DATA"),
         )
+    elif command == "bundle_model_results":
+        sklearn_viz.bundle_model_results(
+            _env("PREDICTIONS"),
+            _env("MODEL_DATA"),
+            _env("CONFUSION_PLOT"),
+            _env("FEATURE_PLOT"),
+        )
     elif command == "bundle_core_results":
         sklearn_viz.bundle_core_results(
-            _env("RF_PREDICTIONS"),
-            _env("RF_MODEL_DATA"),
-            _env("RF_CONFUSION_PLOT"),
-            _env("RF_FEATURE_PLOT"),
-            _env("LR_PREDICTIONS"),
-            _env("LR_MODEL_DATA"),
-            _env("LR_CONFUSION_PLOT"),
-            _env("LR_FEATURE_PLOT"),
+            _env("RF_BUNDLE"),
+            _env("LR_BUNDLE"),
             _env("TARGET_COL"),
         )
     elif command == "bundle_results":
         sklearn_viz.bundle_results(
-            _env("RF_PREDICTIONS"),
-            _env("RF_MODEL_DATA"),
-            _env("RF_CONFUSION_PLOT"),
-            _env("RF_FEATURE_PLOT"),
-            _env("LR_PREDICTIONS"),
-            _env("LR_MODEL_DATA"),
-            _env("LR_CONFUSION_PLOT"),
-            _env("LR_FEATURE_PLOT"),
-            _env("DT_PREDICTIONS"),
-            _env("DT_MODEL_DATA"),
-            _env("DT_CONFUSION_PLOT"),
-            _env("DT_FEATURE_PLOT"),
-            _env("SPLIT_DATA"),
+            _env("RF_BUNDLE"),
+            _env("LR_BUNDLE"),
+            _env("DT_BUNDLE"),
             _env("TARGET_COL"),
         )
     else:

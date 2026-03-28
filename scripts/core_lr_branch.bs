@@ -1,8 +1,7 @@
 import sklearn_brane;
 import sklearn_viz;
 
-on "worker1" {
-    println("Running visualization smoke test...");
+on "worker2" {
     println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
 
@@ -12,34 +11,31 @@ on "worker1" {
     println("Scaling features...");
     let scaled := scale_features(split, "standard");
 
-    println("Training Random Forest...");
-    let model := fit_model(scaled, "target", "random_forest");
+    println("Training Logistic Regression...");
+    let model := fit_model(scaled, "target", "logistic_regression");
 
     println("Running predictions...");
     let predictions := predict(model, scaled);
 
     println("Evaluating predictions...");
     let evaluation := evaluate(predictions, scaled, "target");
+    println(evaluation);
 
     println("Calculating feature importance...");
     let importance := feature_importance(model);
+    println(importance);
 
     println("Running cross-validation...");
-    let cv := cross_validate(scaled, "target", "random_forest", "5");
+    let cv := cross_validate(scaled, "target", "logistic_regression", "5");
+    println(cv);
 
-    println("Generating plots...");
+    println("Generating visualization artifacts...");
     let confusion_plot := plot_confusion_matrix(predictions, scaled, "target");
     let feature_plot := plot_feature_importance(model);
 
-    println("Bundling model artifacts...");
+    println("Bundling Logistic Regression branch...");
     let bundle := bundle_model_results(predictions, model, confusion_plot, feature_plot);
 
-    println(evaluation);
-    println(importance);
-    println(cv);
-    println("Saved plot PNGs to /result.");
-    println("Visualization smoke test complete.");
-    println(confusion_plot);
-    println(feature_plot);
-    println(bundle);
+    println("Committing branch result as core_lr_branch...");
+    return commit_result("core_lr_branch", bundle);
 }

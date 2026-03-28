@@ -1,60 +1,12 @@
-import sklearn_brane;
 import sklearn_viz;
 
 on "worker1" {
-    println("Loading dataset...");
-    let data := new Data { name := "breast_cancer" };
-
-    println("Splitting data...");
-    let split := load_and_split(data, "target", "0.2");
-
-    println("Scaling features...");
-    let scaled := scale_features(split, "standard");
-
-    println("Training Random Forest...");
-    let rf_model := fit_model(scaled, "target", "random_forest");
-
-    println("Running predictions...");
-    let rf_predictions := predict(rf_model, scaled);
-
-    println("Evaluating predictions...");
-    let rf_eval := evaluate(rf_predictions, scaled, "target");
-    println(rf_eval);
-
-    println("Calculating feature importance...");
-    let rf_importance := feature_importance(rf_model);
-    println(rf_importance);
-
-    println("Running cross-validation...");
-    let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
-    println(rf_cv);
-
-    println("Training Logistic Regression...");
-    let lr_model := fit_model(scaled, "target", "logistic_regression");
-
-    println("Running predictions...");
-    let lr_predictions := predict(lr_model, scaled);
-
-    println("Evaluating predictions...");
-    let lr_eval := evaluate(lr_predictions, scaled, "target");
-    println(lr_eval);
-
-    println("Calculating feature importance...");
-    let lr_importance := feature_importance(lr_model);
-    println(lr_importance);
-
-    println("Running cross-validation...");
-    let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
-    println(lr_cv);
-
-    println("Generating plot artifacts...");
-    let rf_confusion_plot := plot_confusion_matrix(rf_predictions, scaled, "target");
-    let rf_feature_plot := plot_feature_importance(rf_model);
-    let lr_confusion_plot := plot_confusion_matrix(lr_predictions, scaled, "target");
-    let lr_feature_plot := plot_feature_importance(lr_model);
+    println("Loading core branch bundles...");
+    let rf_bundle := new Data { name := "core_rf_branch" };
+    let lr_bundle := new Data { name := "core_lr_branch" };
 
     println("Bundling core results...");
-    let results := bundle_core_results(rf_predictions, rf_model, rf_confusion_plot, rf_feature_plot, lr_predictions, lr_model, lr_confusion_plot, lr_feature_plot, "target");
+    let results := bundle_core_results(rf_bundle, lr_bundle, "target");
 
     println("Committing core result as core_results...");
     return commit_result("core_results", results);

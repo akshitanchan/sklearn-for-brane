@@ -80,6 +80,11 @@ ensure_result_dirs() {
     mkdir -p "$HOME/.local/share/brane/data"
     mkdir -p "$HOME/.local/share/brane/data/core_results/data"
     mkdir -p "$HOME/.local/share/brane/data/extended_results/data"
+    mkdir -p "$HOME/.local/share/brane/data/core_rf_branch/data"
+    mkdir -p "$HOME/.local/share/brane/data/core_lr_branch/data"
+    mkdir -p "$HOME/.local/share/brane/data/extended_rf_branch/data"
+    mkdir -p "$HOME/.local/share/brane/data/extended_lr_branch/data"
+    mkdir -p "$HOME/.local/share/brane/data/extended_dt_branch/data"
 }
 
 register_dataset() {

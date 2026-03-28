@@ -1,90 +1,13 @@
-import sklearn_brane;
 import sklearn_viz;
 
 on "worker1" {
-    println("Loading dataset...");
-    let data := new Data { name := "heart_disease" };
-
-    println("Splitting data...");
-    let split := load_and_split(data, "target", "0.2");
-
-    println("Imputing missing values...");
-    let imputed := impute_missing(split, "ca,thal", "most_frequent");
-
-    println("Encoding categorical features...");
-    let encoded := encode_labels(imputed, "cp,restecg,thal,slope", "onehot");
-
-    println("Scaling features...");
-    let scaled := scale_features(encoded, "standard");
-
-    println("Training Random Forest...");
-    let rf_model := fit_model(scaled, "target", "random_forest");
-
-    println("Running predictions...");
-    let rf_predictions := predict(rf_model, scaled);
-
-    println("Evaluating predictions...");
-    let rf_eval := evaluate(rf_predictions, scaled, "target");
-    println(rf_eval);
-
-    println("Calculating feature importance...");
-    let rf_importance := feature_importance(rf_model);
-    println(rf_importance);
-
-    println("Running cross-validation...");
-    let rf_cv := cross_validate(scaled, "target", "random_forest", "5");
-    println(rf_cv);
-
-    println("Generating visualization artifacts...");
-    let rf_confusion_plot := plot_confusion_matrix(rf_predictions, scaled, "target");
-    let rf_feature_plot := plot_feature_importance(rf_model);
-
-    println("Training Logistic Regression...");
-    let lr_model := fit_model(scaled, "target", "logistic_regression");
-
-    println("Running predictions...");
-    let lr_predictions := predict(lr_model, scaled);
-
-    println("Evaluating predictions...");
-    let lr_eval := evaluate(lr_predictions, scaled, "target");
-    println(lr_eval);
-
-    println("Calculating feature importance...");
-    let lr_importance := feature_importance(lr_model);
-    println(lr_importance);
-
-    println("Running cross-validation...");
-    let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
-    println(lr_cv);
-
-    println("Generating visualization artifacts...");
-    let lr_confusion_plot := plot_confusion_matrix(lr_predictions, scaled, "target");
-    let lr_feature_plot := plot_feature_importance(lr_model);
-
-    println("Training Decision Tree...");
-    let dt_model := fit_model(scaled, "target", "decision_tree");
-
-    println("Running predictions...");
-    let dt_predictions := predict(dt_model, scaled);
-
-    println("Evaluating predictions...");
-    let dt_eval := evaluate(dt_predictions, scaled, "target");
-    println(dt_eval);
-
-    println("Calculating feature importance...");
-    let dt_importance := feature_importance(dt_model);
-    println(dt_importance);
-
-    println("Running cross-validation...");
-    let dt_cv := cross_validate(scaled, "target", "decision_tree", "5");
-    println(dt_cv);
-
-    println("Generating visualization artifacts...");
-    let dt_confusion_plot := plot_confusion_matrix(dt_predictions, scaled, "target");
-    let dt_feature_plot := plot_feature_importance(dt_model);
+    println("Loading extended branch bundles...");
+    let rf_bundle := new Data { name := "extended_rf_branch" };
+    let lr_bundle := new Data { name := "extended_lr_branch" };
+    let dt_bundle := new Data { name := "extended_dt_branch" };
 
     println("Bundling final results...");
-    let results := bundle_results(rf_predictions, rf_model, rf_confusion_plot, rf_feature_plot, lr_predictions, lr_model, lr_confusion_plot, lr_feature_plot, dt_predictions, dt_model, dt_confusion_plot, dt_feature_plot, scaled, "target");
+    let results := bundle_results(rf_bundle, lr_bundle, dt_bundle, "target");
 
     println("Committing extended result as extended_results...");
     return commit_result("extended_results", results);

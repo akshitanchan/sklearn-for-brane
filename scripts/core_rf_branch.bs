@@ -2,7 +2,6 @@ import sklearn_brane;
 import sklearn_viz;
 
 on "worker1" {
-    println("Running visualization smoke test...");
     println("Loading dataset...");
     let data := new Data { name := "breast_cancer" };
 
@@ -20,26 +19,23 @@ on "worker1" {
 
     println("Evaluating predictions...");
     let evaluation := evaluate(predictions, scaled, "target");
+    println(evaluation);
 
     println("Calculating feature importance...");
     let importance := feature_importance(model);
+    println(importance);
 
     println("Running cross-validation...");
     let cv := cross_validate(scaled, "target", "random_forest", "5");
+    println(cv);
 
-    println("Generating plots...");
+    println("Generating visualization artifacts...");
     let confusion_plot := plot_confusion_matrix(predictions, scaled, "target");
     let feature_plot := plot_feature_importance(model);
 
-    println("Bundling model artifacts...");
+    println("Bundling Random Forest branch...");
     let bundle := bundle_model_results(predictions, model, confusion_plot, feature_plot);
 
-    println(evaluation);
-    println(importance);
-    println(cv);
-    println("Saved plot PNGs to /result.");
-    println("Visualization smoke test complete.");
-    println(confusion_plot);
-    println(feature_plot);
-    println(bundle);
+    println("Committing branch result as core_rf_branch...");
+    return commit_result("core_rf_branch", bundle);
 }
