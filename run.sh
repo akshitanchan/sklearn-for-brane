@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODE="${1:-}"
 
 prompt_yes_no() {
     local message="$1"
@@ -11,20 +12,30 @@ prompt_yes_no() {
 }
 
 prompt_mode() {
-    local reply
-    read -r -p "Which mode do you want to run? [core/extended] " reply
-    case "${reply,,}" in
+    local reply="${MODE,,}"
+
+    if [[ -z "$reply" ]]; then
+        read -r -p "Which mode do you want to run? [core/extended] " reply
+        reply="${reply,,}"
+    fi
+
+    case "$reply" in
         extended)
             PIPELINE_PATH="$ROOT_DIR/pipeline_extended.bs"
             RESULT_NAME="extended_results"
             RESULT_DEST="$ROOT_DIR/results/extended"
             PIPELINE_LABEL="extended"
             ;;
-        *)
+        core|"")
             PIPELINE_PATH="$ROOT_DIR/pipeline.bs"
             RESULT_NAME="core_results"
             RESULT_DEST="$ROOT_DIR/results/core"
             PIPELINE_LABEL="core"
+            ;;
+        *)
+            echo "Unknown mode: $reply" >&2
+            echo "Usage: bash run.sh [core|extended]" >&2
+            exit 1
             ;;
     esac
 }
@@ -77,6 +88,7 @@ copy_results() {
     local source_path
     source_path="$(brane data path "$RESULT_NAME")"
 
+    mkdir -p "$ROOT_DIR/results"
     rm -rf "$RESULT_DEST"
     mkdir -p "$RESULT_DEST"
     cp -R "$source_path"/. "$RESULT_DEST"/
