@@ -101,6 +101,20 @@ def _copy_latest_file(source_dir: str, stem: str, suffix: str, destination: Path
     return destination.name
 
 
+def _copy_optional_latest_file(
+    source_dir: str,
+    stem: str,
+    suffix: str,
+    destination: Path,
+) -> str | None:
+    matches = sorted(Path(source_dir).glob(f"{stem}_*{suffix}"))
+    if not matches:
+        return None
+
+    shutil.copy2(matches[-1], destination)
+    return destination.name
+
+
 def _copy_model_bundle(
     output_dir: Path,
     model_data: str,
@@ -170,6 +184,68 @@ def _copy_model_bundle(
     return manifest
 
 
+def _bundle_core_model(
+    output_dir: Path,
+    model_data: str,
+    pred_path: str,
+    plot_results: str,
+    stamp: str,
+) -> dict:
+    metadata_source = _latest_matching_file(Path(model_data), "metadata", ".json")
+    metadata = json.loads(metadata_source.read_text())
+    model_name = metadata.get("model_name", output_dir.name)
+
+    manifest = {
+        "model_name": model_name,
+        "metadata_json": _copy_latest_file(
+            model_data,
+            "metadata",
+            ".json",
+            _timestamped_path(output_dir, f"{model_name}_metadata", ".json", stamp),
+        ),
+        "predictions_csv": _copy_latest_file(
+            pred_path,
+            "predictions",
+            ".csv",
+            _timestamped_path(output_dir, f"{model_name}_predictions", ".csv", stamp),
+        ),
+        "confusion_matrix_png": _copy_latest_file(
+            plot_results,
+            "confusion_matrix",
+            ".png",
+            _timestamped_path(output_dir, f"{model_name}_confusion_matrix", ".png", stamp),
+        ),
+    }
+
+    feature_plot_name = _copy_optional_latest_file(
+        plot_results,
+        "feature_importance",
+        ".png",
+        _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp),
+    )
+    if feature_plot_name is not None:
+        manifest["feature_importance_png"] = feature_plot_name
+
+    plot_manifest_name = _copy_optional_latest_file(
+        plot_results,
+        "plot_manifest",
+        ".json",
+        _timestamped_path(output_dir, f"{model_name}_plot_manifest", ".json", stamp),
+    )
+    if plot_manifest_name is not None:
+        manifest["plot_manifest_json"] = plot_manifest_name
+
+    bundle_manifest_path = _timestamped_path(
+        output_dir,
+        f"{model_name}_bundle_manifest",
+        ".json",
+        stamp,
+    )
+    _save_json(bundle_manifest_path, manifest)
+    manifest["bundle_manifest_json"] = bundle_manifest_path.name
+    return manifest
+
+
 def plot_confusion_matrix(pred_path: str, split_data: str, target_col: str) -> None:
     _log("Generating confusion matrix plot...")
     stamp = _timestamp()
@@ -216,6 +292,47 @@ def plot_feature_importance(model_data: str) -> None:
         ],
     )
     _save_feature_importance_png(plot_path, features, importances)
+    _emit_result(output_dir)
+
+
+def bundle_core_results(
+    rf_predictions: str,
+    rf_model_data: str,
+    rf_plot_results: str,
+    lr_predictions: str,
+    lr_model_data: str,
+    lr_plot_results: str,
+    target_col: str,
+) -> None:
+    _log("Bundling core results...")
+    stamp = _timestamp()
+    output_dir = _ensure_result_dir("core_results")
+
+    rows = []
+    for label, model_data, predictions, plot_results in (
+        ("random_forest", rf_model_data, rf_predictions, rf_plot_results),
+        ("logistic_regression", lr_model_data, lr_predictions, lr_plot_results),
+    ):
+        model_output_dir = output_dir / label
+        model_output_dir.mkdir(parents=True, exist_ok=True)
+        manifest = _bundle_core_model(
+            model_output_dir,
+            model_data,
+            predictions,
+            plot_results,
+            stamp,
+        )
+        manifest["directory"] = label
+        rows.append(manifest)
+
+    _save_json(
+        output_dir / "bundle_manifest.json",
+        {
+            "target_col": target_col,
+            "models": [row["model_name"] for row in rows],
+            "directories": [row["directory"] for row in rows],
+        },
+    )
     _emit_result(output_dir)
 
 

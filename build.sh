@@ -2,7 +2,61 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODE="${1:-core}"
+MODE="core"
+DATASET_MODE="${DATASET_MODE:-auto}"
+
+usage() {
+    cat <<'EOF'
+Usage: bash build.sh [core|extended] [--force-datasets|--skip-datasets]
+
+Dataset handling:
+  default / auto      Build datasets that are missing locally and skip ones that already exist.
+  --force-datasets    Rebuild local datasets from their manifests.
+  --skip-datasets     Do not touch local datasets.
+
+You can also set DATASET_MODE=auto|force|skip in the environment.
+EOF
+}
+
+dataset_exists() {
+    local name="$1"
+    brane data path "$name" >/dev/null 2>&1
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            core|extended)
+                MODE="$1"
+                ;;
+            --force-datasets|--rebuild-datasets)
+                DATASET_MODE="force"
+                ;;
+            --skip-datasets)
+                DATASET_MODE="skip"
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "Unknown argument: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+        shift
+    done
+
+    case "$DATASET_MODE" in
+        auto|force|skip) ;;
+        *)
+            echo "Invalid DATASET_MODE: $DATASET_MODE" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+}
 
 build_package() {
     local package_name="$1"
@@ -29,20 +83,40 @@ build_package() {
 register_dataset() {
     local name="$1"
     local manifest="$2"
-    if [[ -f "$manifest" ]]; then
+
+    if [[ ! -f "$manifest" ]]; then
+        return 0
+    fi
+
+    case "$DATASET_MODE" in
+        skip)
+            echo "Skipping dataset registration for $name."
+            return 0
+            ;;
+        force)
+            echo "Rebuilding $name dataset..."
+            if dataset_exists "$name"; then
+                brane data remove --force "$name"
+            fi
+            brane data build "$manifest"
+            return 0
+            ;;
+    esac
+
+    if dataset_exists "$name"; then
+        echo "Dataset $name already exists locally; skipping."
+    else
         echo "Registering $name dataset..."
-        brane data remove "$name" 2>/dev/null || true
         brane data build "$manifest"
     fi
 }
+
+parse_args "$@"
 
 register_dataset "breast_cancer" "$ROOT_DIR/data/breast_cancer/data.yml"
 register_dataset "heart_disease" "$ROOT_DIR/data/heart_disease/data.yml"
 
 build_package "sklearn_brane"
-
-if [[ "$MODE" == "extended" ]]; then
-    build_package "sklearn_viz"
-fi
+build_package "sklearn_viz"
 
 echo "Done. Run 'brane search' to verify."

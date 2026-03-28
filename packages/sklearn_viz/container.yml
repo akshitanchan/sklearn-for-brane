@@ -1,5 +1,5 @@
 name: sklearn_viz
-version: 1.0.0
+version: 1.0.1
 kind: ecu
 
 files:
@@ -42,6 +42,29 @@ actions:
     input:
       - name: model_data
         type: IntermediateResult
+    output:
+      - name: result
+        type: IntermediateResult
+
+  bundle_core_results:
+    command:
+      args:
+        - bundle_core_results
+    input:
+      - name: rf_predictions
+        type: IntermediateResult
+      - name: rf_model_data
+        type: IntermediateResult
+      - name: rf_plot_results
+        type: IntermediateResult
+      - name: lr_predictions
+        type: IntermediateResult
+      - name: lr_model_data
+        type: IntermediateResult
+      - name: lr_plot_results
+        type: IntermediateResult
+      - name: target_col
+        type: string
     output:
       - name: result
         type: IntermediateResult

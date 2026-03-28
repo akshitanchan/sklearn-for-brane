@@ -16,14 +16,14 @@ prompt_mode() {
     case "${reply,,}" in
         extended)
             PIPELINE_PATH="$ROOT_DIR/pipeline_extended.bs"
-            RESULT_NAME="heart_results"
-            RESULT_DEST="$ROOT_DIR/results/heart_disease"
+            RESULT_NAME="extended_results"
+            RESULT_DEST="$ROOT_DIR/results/extended"
             PIPELINE_LABEL="extended"
             ;;
         *)
             PIPELINE_PATH="$ROOT_DIR/pipeline.bs"
-            RESULT_NAME="sklearn_report"
-            RESULT_DEST="$ROOT_DIR/results/breast_cancer"
+            RESULT_NAME="core_results"
+            RESULT_DEST="$ROOT_DIR/results/core"
             PIPELINE_LABEL="core"
             ;;
     esac
@@ -53,9 +53,7 @@ build_package() {
 
 rebuild_packages() {
     build_package "sklearn_brane"
-    if [[ "$PIPELINE_LABEL" == "extended" ]]; then
-        build_package "sklearn_viz"
-    fi
+    build_package "sklearn_viz"
 }
 
 run_core_tests() {

@@ -86,6 +86,6 @@ on "worker1" {
     println("Bundling final results...");
     let results := bundle_results(rf_predictions, rf_model, rf_confusion_plot, rf_feature_plot, lr_predictions, lr_model, lr_confusion_plot, lr_feature_plot, dt_predictions, dt_model, dt_confusion_plot, dt_feature_plot, scaled, "target");
 
-    println("Committing extended result as heart_results...");
-    return commit_result("heart_results", results);
+    println("Committing extended result as extended_results...");
+    return commit_result("extended_results", results);
 }

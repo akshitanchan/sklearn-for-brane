@@ -23,6 +23,16 @@ if __name__ == "__main__":
         sklearn_viz.plot_feature_importance(
             _env("MODEL_DATA"),
         )
+    elif command == "bundle_core_results":
+        sklearn_viz.bundle_core_results(
+            _env("RF_PREDICTIONS"),
+            _env("RF_MODEL_DATA"),
+            _env("RF_PLOT_RESULTS"),
+            _env("LR_PREDICTIONS"),
+            _env("LR_MODEL_DATA"),
+            _env("LR_PLOT_RESULTS"),
+            _env("TARGET_COL"),
+        )
     elif command == "bundle_results":
         sklearn_viz.bundle_results(
             _env("RF_PREDICTIONS"),

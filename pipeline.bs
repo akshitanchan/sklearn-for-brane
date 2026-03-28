@@ -1,4 +1,5 @@
 import sklearn_brane;
+import sklearn_viz;
 
 on "worker1" {
     println("Loading dataset...");
@@ -38,9 +39,21 @@ on "worker1" {
     let lr_eval := evaluate(lr_predictions, scaled, "target");
     println(lr_eval);
 
-    println("Generating fallback plots...");
-    let report := plot_results(rf_predictions, rf_model, scaled, "target");
+    println("Calculating feature importance...");
+    let lr_importance := feature_importance(lr_model);
+    println(lr_importance);
 
-    println("Committing core result as sklearn_report...");
-    return commit_result("sklearn_report", report);
+    println("Running cross-validation...");
+    let lr_cv := cross_validate(scaled, "target", "logistic_regression", "5");
+    println(lr_cv);
+
+    println("Generating plot artifacts...");
+    let rf_plots := plot_results(rf_predictions, rf_model, scaled, "target");
+    let lr_plots := plot_results(lr_predictions, lr_model, scaled, "target");
+
+    println("Bundling core results...");
+    let results := bundle_core_results(rf_predictions, rf_model, rf_plots, lr_predictions, lr_model, lr_plots, "target");
+
+    println("Committing core result as core_results...");
+    return commit_result("core_results", results);
 }
