@@ -5,41 +5,104 @@
 The project is split into two packages:
 
 - `sklearn_brane`
-  Main ML and preprocessing actions.
+  The main machine-learning package.
 - `sklearn_viz`
-  Visualization and result-bundling actions.
+  The visualization and result-bundling package.
 
 Together, they support:
 - a **core** two-worker flow on the Breast Cancer dataset
 - an **extended** two-worker flow on the Heart Disease dataset
 
-## What is in this repo
+## Package 1: `sklearn_brane`
+
+`sklearn_brane` contains the main ML and preprocessing actions.
+
+### Core actions
+
+- `load_and_split`
+- `scale_features`
+- `fit_model`
+- `predict`
+- `evaluate`
+- `feature_importance`
+- `cross_validate`
+
+These are the main scikit-learn style wrapped actions in the project. They cover the standard classification flow:
+- split data
+- scale features
+- train models
+- predict
+- evaluate
+- inspect feature importance
+- measure cross-validation performance
+
+### Extended preprocessing actions
+
+- `impute_missing`
+- `encode_labels`
+
+These are used in the Heart Disease workflow, where the dataset has missing values and categorical columns.
+
+## Package 2: `sklearn_viz`
+
+`sklearn_viz` is the visualization and bundling package.
+
+Its actions are:
+- `plot_confusion_matrix`
+- `plot_feature_importance`
+- `bundle_model_results`
+- `bundle_core_results`
+- `bundle_results`
+
+In this package:
+- `plot_confusion_matrix` and `plot_feature_importance` are visualization-oriented wrappers
+- `bundle_model_results`, `bundle_core_results`, and `bundle_results` are Brane workflow helper actions used to collect outputs into final committed result datasets
+
+This package is what makes the project a real two-package Brane workflow instead of just one sklearn wrapper package.
+
+## Core vs Extended
+
+### Core workflow
+
+The core flow uses the `breast_cancer` dataset and is split across two workers:
+
+- `worker1`: Random Forest branch
+- `worker2`: Logistic Regression branch
+
+The branch outputs are then merged by [pipeline.bs](/Users/prita/uni/p4/webservices/sklearn-for-brane/pipeline.bs), which:
+- loads the branch result datasets
+- calls `sklearn_viz.bundle_core_results`
+- commits the final output as `core_results`
+
+### Extended workflow
+
+The extended flow uses the `heart_disease` dataset and is also split across two workers:
+
+- `worker1`: Random Forest and Decision Tree branches
+- `worker2`: Logistic Regression branch
+
+The extended flow adds:
+- `impute_missing`
+- `encode_labels`
+
+Then [pipeline_extended.bs](/Users/prita/uni/p4/webservices/sklearn-for-brane/pipeline_extended.bs):
+- loads the branch result datasets
+- calls `sklearn_viz.bundle_results`
+- commits the final output as `extended_results`
+
+## Repo structure
 
 - `packages/sklearn_brane`
-  Split, scale, impute, encode, train, predict, evaluate, feature importance, and cross-validation.
 - `packages/sklearn_viz`
-  Confusion-matrix plotting, feature-importance plotting, single-model bundling, and final result aggregation.
-- `scripts/core_*_branch.bs`
-  Core branch workflows:
-  - `worker1`: Random Forest
-  - `worker2`: Logistic Regression
-- `scripts/extended_*_branch.bs`
-  Extended branch workflows:
-  - `worker1`: Random Forest and Decision Tree
-  - `worker2`: Logistic Regression
 - `pipeline.bs`
-  Core merge workflow. Reads `core_rf_branch` and `core_lr_branch`, then commits `core_results`.
 - `pipeline_extended.bs`
-  Extended merge workflow. Reads `extended_rf_branch`, `extended_lr_branch`, and `extended_dt_branch`, then commits `extended_results`.
 - `run.sh`
-  Official end-to-end entrypoint. Runs branch workflows first, then the merge workflow.
-
-## Datasets
-
-- `breast_cancer`
-  Breast Cancer Wisconsin (Diagnostic), used by the core flow.
-- `heart_disease`
-  Heart Disease dataset, used by the extended flow.
+- `scripts/core_*_branch.bs`
+- `scripts/extended_*_branch.bs`
+- `scripts/test_preprocess.bs`
+- `scripts/test_model.bs`
+- `scripts/test_viz.bs`
+- `scripts/test_extended.bs`
 
 ## Build
 
@@ -66,7 +129,6 @@ bash run.sh extended
 `run.sh`:
 - optionally rebuilds packages
 - optionally runs smoke tests
-- removes stale branch datasets
 - runs the worker-specific branch workflows
 - runs the merge workflow
 - copies final results into `results/core` or `results/extended`
