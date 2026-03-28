@@ -1,5 +1,5 @@
 name: sklearn_viz
-version: 1.0.1
+version: 1.1.0
 kind: ecu
 
 files:
@@ -55,13 +55,17 @@ actions:
         type: IntermediateResult
       - name: rf_model_data
         type: IntermediateResult
-      - name: rf_plot_results
+      - name: rf_confusion_plot
+        type: IntermediateResult
+      - name: rf_feature_plot
         type: IntermediateResult
       - name: lr_predictions
         type: IntermediateResult
       - name: lr_model_data
         type: IntermediateResult
-      - name: lr_plot_results
+      - name: lr_confusion_plot
+        type: IntermediateResult
+      - name: lr_feature_plot
         type: IntermediateResult
       - name: target_col
         type: string

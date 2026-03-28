@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, StandardScaler
 from sklearn.svm import SVC
@@ -20,14 +20,9 @@ from sklearn.tree import DecisionTreeClassifier
 RESULT_ROOT = Path("/result")
 
 
-def _ensure_result_dir(name: str) -> Path:
+def _ensure_result_root() -> Path:
     RESULT_ROOT.mkdir(parents=True, exist_ok=True)
     return RESULT_ROOT
-
-
-def _emit_result(path: Path) -> None:
-    return None
-
 
 def _log(message: str) -> None:
     print(message, file=sys.stderr)
@@ -136,71 +131,6 @@ def _build_model(model_name: str):
     raise ValueError(f"Unsupported model_name '{model_name}'.")
 
 
-def _load_model_bundle(model_data: str, pred_path: str, split_data: str):
-    model_root = Path(model_data)
-    pred_root = Path(pred_path)
-    split_root = Path(split_data)
-    model = joblib.load(_latest_matching_file(model_root, "model", ".joblib"))
-    meta = json.loads(_latest_matching_file(model_root, "metadata", ".json").read_text())
-    features = meta.get("feature_columns")
-    y_test = pd.read_csv(_latest_matching_file(split_root, "y_test", ".csv")).iloc[:, 0]
-    y_pred = pd.read_csv(_latest_matching_file(pred_root, "predictions", ".csv")).iloc[:, 0]
-    if hasattr(model, "feature_importances_"):
-        importances = model.feature_importances_
-    elif hasattr(model, "coef_"):
-        importances = np.abs(model.coef_).flatten()
-    else:
-        importances = None
-    return meta, features, y_test, y_pred, importances
-
-
-def _save_confusion_matrix_png(confusion_path: Path, cm: np.ndarray) -> None:
-    import os
-
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
-    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
-    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
-
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.title("Confusion Matrix")
-    plt.tight_layout()
-    plt.savefig(confusion_path, format="png", bbox_inches="tight")
-    plt.close()
-
-
-def _save_feature_importance_png(
-    feature_plot_path: Path, features: list[str], importances: np.ndarray
-) -> None:
-    import os
-
-    os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
-    os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
-    Path("/tmp/matplotlib").mkdir(parents=True, exist_ok=True)
-
-    import matplotlib
-
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-
-    plt.figure(figsize=(6, 4))
-    idx = np.argsort(importances)[::-1]
-    plt.bar(np.array(features)[idx], np.array(importances)[idx])
-    plt.xticks(rotation=45, ha="right")
-    plt.title("Feature Importance")
-    plt.tight_layout()
-    plt.savefig(feature_plot_path, format="png", bbox_inches="tight")
-    plt.close()
-
-
 def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
     _log("Loading dataset...")
     stamp = _timestamp()
@@ -222,7 +152,7 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
         stratify=y,
     )
 
-    output_dir = _ensure_result_dir("split_data")
+    output_dir = _ensure_result_root()
     metadata = {
         "target_col": target_col,
         "test_size": test_size,
@@ -231,7 +161,7 @@ def load_and_split(filepath: str, target_col: str, test_size: float) -> None:
     }
     _save_split_output(output_dir, stamp, x_train, x_test, y_train, y_test, metadata)
     _log(f"Saved split files to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def scale_features(data_path: str, method: str) -> None:
@@ -259,7 +189,7 @@ def scale_features(data_path: str, method: str) -> None:
 
     metadata["scaler"] = normalized
 
-    output_dir = _ensure_result_dir("scaled_data")
+    output_dir = _ensure_result_root()
     _save_split_output(
         output_dir,
         stamp,
@@ -271,7 +201,7 @@ def scale_features(data_path: str, method: str) -> None:
     )
     joblib.dump(scaler, _timestamped_path(output_dir, "scaler", ".joblib", stamp))
     _log(f"Saved scaled data to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def impute_missing(data_path: str, columns: str, strategy: str = "most_frequent") -> None:
@@ -290,7 +220,7 @@ def impute_missing(data_path: str, columns: str, strategy: str = "most_frequent"
     metadata["imputer_strategy"] = strategy
     metadata["imputed_columns"] = selected_columns
 
-    output_dir = _ensure_result_dir("imputed_data")
+    output_dir = _ensure_result_root()
     _save_split_output(
         output_dir,
         stamp,
@@ -301,7 +231,7 @@ def impute_missing(data_path: str, columns: str, strategy: str = "most_frequent"
         metadata,
     )
     _log(f"Saved imputed data to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def encode_labels(data_path: str, columns: str, method: str) -> None:
@@ -348,7 +278,7 @@ def encode_labels(data_path: str, columns: str, method: str) -> None:
     metadata["encoded_columns"] = categorical_columns
     metadata["feature_columns"] = list(x_train_encoded.columns)
 
-    output_dir = _ensure_result_dir("encoded_data")
+    output_dir = _ensure_result_root()
     _save_split_output(
         output_dir,
         stamp,
@@ -359,7 +289,7 @@ def encode_labels(data_path: str, columns: str, method: str) -> None:
         metadata,
     )
     _log(f"Saved encoded data to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def fit_model(data_path: str, target_col: str, model_name: str) -> None:
@@ -369,7 +299,7 @@ def fit_model(data_path: str, target_col: str, model_name: str) -> None:
     model = _build_model(model_name)
     model.fit(x_train, y_train)
 
-    output_dir = _ensure_result_dir("model_data")
+    output_dir = _ensure_result_root()
     joblib.dump(model, _timestamped_path(output_dir, "model", ".joblib", stamp))
 
     metadata = {
@@ -380,7 +310,7 @@ def fit_model(data_path: str, target_col: str, model_name: str) -> None:
     }
     _save_json(_timestamped_path(output_dir, "metadata", ".json", stamp), metadata)
     _log(f"Saved model files to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def predict(model_data: str, split_data: str) -> None:
@@ -390,7 +320,7 @@ def predict(model_data: str, split_data: str) -> None:
     _, x_test, _, y_test = _load_split_frames(split_data)
     predictions = pd.Series(model.predict(x_test), name="prediction")
 
-    output_dir = _ensure_result_dir("predictions")
+    output_dir = _ensure_result_root()
     predictions.to_frame().to_csv(
         _timestamped_path(output_dir, "predictions", ".csv", stamp),
         index=False,
@@ -401,7 +331,7 @@ def predict(model_data: str, split_data: str) -> None:
     )
     x_test.to_csv(_timestamped_path(output_dir, "X_test", ".csv", stamp), index=False)
     _log(f"Saved predictions to {output_dir}")
-    _emit_result(output_dir)
+    return None
 
 
 def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
@@ -411,7 +341,7 @@ def evaluate(pred_path: str, split_data: str, target_col: str) -> None:
     y_pred = pd.read_csv(_latest_matching_file(Path(pred_path), "predictions", ".csv")).iloc[:, 0]
     accuracy = accuracy_score(y_test, y_pred)
 
-    output_dir = _ensure_result_dir("evaluation")
+    output_dir = _ensure_result_root()
     report_path = _timestamped_path(output_dir, "classification_report", ".csv", stamp)
     summary_path = _timestamped_path(output_dir, "results_summary", ".json", stamp)
     pd.DataFrame(
@@ -445,7 +375,7 @@ def feature_importance(model_data: str) -> None:
         return
 
     ranking = sorted(zip(features, importances), key=lambda item: -item[1])
-    output_dir = _ensure_result_dir("feature_importance")
+    output_dir = _ensure_result_root()
     csv_path = _timestamped_path(output_dir, "feature_importance", ".csv", stamp)
     summary_path = _timestamped_path(output_dir, "top_features", ".json", stamp)
     pd.DataFrame(ranking, columns=["feature", "importance"]).to_csv(csv_path, index=False)
@@ -473,7 +403,7 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     model = _build_model(model_name)
     scores = cross_val_score(model, x_train, y_train, cv=cv, scoring="accuracy")
 
-    output_dir = _ensure_result_dir("cross_validation")
+    output_dir = _ensure_result_root()
     pd.DataFrame(
         {"fold": list(range(1, len(scores) + 1)), "accuracy": scores}
     ).to_csv(
@@ -483,29 +413,3 @@ def cross_validate(split_data: str, target_col: str, model_name: str, cv: int = 
     print(
         f'output: "Cross-validated accuracy: {scores.mean():.4f} +/- {scores.std():.4f} (n={cv})"'
     )
-
-
-def plot_results(pred_path: str, model_data: str, split_data: str, target_col: str) -> None:
-    _log("Generating plots...")
-    stamp = _timestamp()
-    _, features, y_test, y_pred, importances = _load_model_bundle(
-        model_data, pred_path, split_data
-    )
-
-    output_dir = _ensure_result_dir("plots")
-    confusion_path = _timestamped_path(output_dir, "confusion_matrix", ".png", stamp)
-    _save_confusion_matrix_png(confusion_path, confusion_matrix(y_test, y_pred))
-
-    manifest = {"confusion_matrix_png": confusion_path.name}
-    if importances is not None and features is not None:
-        feature_plot_path = _timestamped_path(
-            output_dir,
-            "feature_importance",
-            ".png",
-            stamp,
-        )
-        _save_feature_importance_png(feature_plot_path, features, importances)
-        manifest["feature_importance_png"] = feature_plot_path.name
-
-    _save_json(_timestamped_path(output_dir, "plot_manifest", ".json", stamp), manifest)
-    _emit_result(output_dir)

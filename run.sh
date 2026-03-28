@@ -40,33 +40,6 @@ prompt_mode() {
     esac
 }
 
-build_package() {
-    local package_name="$1"
-    local package_dir="$ROOT_DIR/packages/$package_name"
-    local version
-    local image_tar
-
-    version="$(awk '/^version:/ { print $2; exit }' "$package_dir/container.yml")"
-    image_tar="$HOME/.local/share/brane/packages/$package_name/$version/image.tar"
-
-    echo "Building $package_name version $version..."
-    (
-        cd "$package_dir"
-        brane build ./container.yml --init ~/branelet
-    )
-
-    echo "Loading Docker image from $image_tar..."
-    docker load -i "$image_tar"
-
-    echo "Pushing $package_name..."
-    brane push "$package_name"
-}
-
-rebuild_packages() {
-    build_package "sklearn_brane"
-    build_package "sklearn_viz"
-}
-
 run_core_tests() {
     echo "Running preprocess smoke test..."
     brane run "$ROOT_DIR/scripts/test_preprocess.bs" --remote
@@ -100,7 +73,7 @@ prompt_mode
 echo "Selected $PIPELINE_LABEL mode."
 
 if prompt_yes_no "Do you want to rebuild the required packages first?"; then
-    rebuild_packages
+    bash "$ROOT_DIR/build.sh"
 else
     echo "Skipping rebuild."
 fi

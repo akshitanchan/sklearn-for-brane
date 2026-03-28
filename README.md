@@ -5,9 +5,9 @@
 ## What is in this repo
 
 - `packages/sklearn_brane`
-  Core ML actions: split, scale, impute, encode, train, predict, evaluate, cross-validate, and basic plotting.
+  Core ML and preprocessing actions: split, scale, impute, encode, train, predict, evaluate, feature importance, and cross-validation.
 - `packages/sklearn_viz`
-  Visualization and bundling actions used to collect model artifacts into a final result dataset.
+  Visualization and bundling actions used to generate plots and collect model artifacts into a final result dataset.
 - `pipeline.bs`
   Core workflow on the Breast Cancer dataset. Commits `core_results`.
 - `pipeline_extended.bs`
@@ -29,7 +29,7 @@
 The core workflow:
 - uses the `breast_cancer` dataset
 - trains Random Forest and Logistic Regression
-- generates plot artifacts for both models
+- generates confusion-matrix and feature-importance artifacts for both models
 - bundles them into `core_results`
 
 ### Extended

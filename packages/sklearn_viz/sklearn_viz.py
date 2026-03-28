@@ -14,13 +14,9 @@ from sklearn.metrics import confusion_matrix
 RESULT_ROOT = Path("/result")
 
 
-def _ensure_result_dir(name: str) -> Path:
+def _ensure_result_root() -> Path:
     RESULT_ROOT.mkdir(parents=True, exist_ok=True)
     return RESULT_ROOT
-
-
-def _emit_result(path: Path) -> None:
-    return None
 
 
 def _log(message: str) -> None:
@@ -101,21 +97,7 @@ def _copy_latest_file(source_dir: str, stem: str, suffix: str, destination: Path
     return destination.name
 
 
-def _copy_optional_latest_file(
-    source_dir: str,
-    stem: str,
-    suffix: str,
-    destination: Path,
-) -> str | None:
-    matches = sorted(Path(source_dir).glob(f"{stem}_*{suffix}"))
-    if not matches:
-        return None
-
-    shutil.copy2(matches[-1], destination)
-    return destination.name
-
-
-def _copy_model_bundle(
+def _bundle_model_artifacts(
     output_dir: Path,
     model_data: str,
     pred_path: str,
@@ -123,76 +105,9 @@ def _copy_model_bundle(
     feature_plot: str,
     stamp: str,
 ) -> dict:
-    metadata_source = _latest_matching_file(Path(model_data), "metadata", ".json")
-    metadata = json.loads(metadata_source.read_text())
-    model_name = metadata.get("model_name", output_dir.name)
-
-    confusion_name = _copy_latest_file(
-        confusion_plot,
-        "confusion_matrix",
-        ".png",
-        _timestamped_path(output_dir, f"{model_name}_confusion_matrix", ".png", stamp),
+    metadata = json.loads(
+        _latest_matching_file(Path(model_data), "metadata", ".json").read_text()
     )
-    feature_png_name = _copy_latest_file(
-        feature_plot,
-        "feature_importance",
-        ".png",
-        _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp),
-    )
-    feature_csv_name = _copy_latest_file(
-        feature_plot,
-        "feature_importance",
-        ".csv",
-        _timestamped_path(output_dir, f"{model_name}_feature_importance", ".csv", stamp),
-    )
-    top_features_name = _copy_latest_file(
-        feature_plot,
-        "top_features",
-        ".json",
-        _timestamped_path(output_dir, f"{model_name}_top_features", ".json", stamp),
-    )
-    predictions_name = _copy_latest_file(
-        pred_path,
-        "predictions",
-        ".csv",
-        _timestamped_path(output_dir, f"{model_name}_predictions", ".csv", stamp),
-    )
-    metadata_name = _copy_latest_file(
-        model_data,
-        "metadata",
-        ".json",
-        _timestamped_path(output_dir, f"{model_name}_metadata", ".json", stamp),
-    )
-
-    manifest = {
-        "model_name": model_name,
-        "metadata_json": metadata_name,
-        "predictions_csv": predictions_name,
-        "confusion_matrix_png": confusion_name,
-        "feature_importance_png": feature_png_name,
-        "feature_importance_csv": feature_csv_name,
-        "top_features_json": top_features_name,
-    }
-    manifest_path = _timestamped_path(
-        output_dir,
-        f"{model_name}_bundle_manifest",
-        ".json",
-        stamp,
-    )
-    _save_json(manifest_path, manifest)
-    manifest["bundle_manifest_json"] = manifest_path.name
-    return manifest
-
-
-def _bundle_core_model(
-    output_dir: Path,
-    model_data: str,
-    pred_path: str,
-    plot_results: str,
-    stamp: str,
-) -> dict:
-    metadata_source = _latest_matching_file(Path(model_data), "metadata", ".json")
-    metadata = json.loads(metadata_source.read_text())
     model_name = metadata.get("model_name", output_dir.name)
 
     manifest = {
@@ -210,30 +125,30 @@ def _bundle_core_model(
             _timestamped_path(output_dir, f"{model_name}_predictions", ".csv", stamp),
         ),
         "confusion_matrix_png": _copy_latest_file(
-            plot_results,
+            confusion_plot,
             "confusion_matrix",
             ".png",
             _timestamped_path(output_dir, f"{model_name}_confusion_matrix", ".png", stamp),
         ),
+        "feature_importance_png": _copy_latest_file(
+            feature_plot,
+            "feature_importance",
+            ".png",
+            _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp),
+        ),
+        "feature_importance_csv": _copy_latest_file(
+            feature_plot,
+            "feature_importance",
+            ".csv",
+            _timestamped_path(output_dir, f"{model_name}_feature_importance", ".csv", stamp),
+        ),
+        "top_features_json": _copy_latest_file(
+            feature_plot,
+            "top_features",
+            ".json",
+            _timestamped_path(output_dir, f"{model_name}_top_features", ".json", stamp),
+        ),
     }
-
-    feature_plot_name = _copy_optional_latest_file(
-        plot_results,
-        "feature_importance",
-        ".png",
-        _timestamped_path(output_dir, f"{model_name}_feature_importance", ".png", stamp),
-    )
-    if feature_plot_name is not None:
-        manifest["feature_importance_png"] = feature_plot_name
-
-    plot_manifest_name = _copy_optional_latest_file(
-        plot_results,
-        "plot_manifest",
-        ".json",
-        _timestamped_path(output_dir, f"{model_name}_plot_manifest", ".json", stamp),
-    )
-    if plot_manifest_name is not None:
-        manifest["plot_manifest_json"] = plot_manifest_name
 
     bundle_manifest_path = _timestamped_path(
         output_dir,
@@ -246,20 +161,38 @@ def _bundle_core_model(
     return manifest
 
 
+def _bundle_models(root_dir: Path, model_specs: list[tuple[str, str, str, str, str]], stamp: str) -> list[dict]:
+    rows = []
+    for label, model_data, predictions, confusion_plot, feature_plot in model_specs:
+        model_output_dir = root_dir / label
+        model_output_dir.mkdir(parents=True, exist_ok=True)
+        manifest = _bundle_model_artifacts(
+            model_output_dir,
+            model_data,
+            predictions,
+            confusion_plot,
+            feature_plot,
+            stamp,
+        )
+        manifest["directory"] = label
+        rows.append(manifest)
+    return rows
+
+
 def plot_confusion_matrix(pred_path: str, split_data: str, target_col: str) -> None:
     _log("Generating confusion matrix plot...")
     stamp = _timestamp()
     y_test = pd.read_csv(_latest_matching_file(Path(split_data), "y_test", ".csv")).iloc[:, 0]
     y_pred = pd.read_csv(_latest_matching_file(Path(pred_path), "predictions", ".csv")).iloc[:, 0]
 
-    output_dir = _ensure_result_dir("confusion_matrix")
+    output_dir = _ensure_result_root()
     confusion_path = _timestamped_path(output_dir, "confusion_matrix", ".png", stamp)
     _save_confusion_matrix_png(confusion_path, confusion_matrix(y_test, y_pred))
     _save_json(
         _timestamped_path(output_dir, "confusion_manifest", ".json", stamp),
         {"confusion_matrix_png": confusion_path.name},
     )
-    _emit_result(output_dir)
+    return None
 
 
 def plot_feature_importance(model_data: str) -> None:
@@ -278,7 +211,7 @@ def plot_feature_importance(model_data: str) -> None:
         raise ValueError("Model does not support feature importance plotting.")
 
     ranking = sorted(zip(features, importances), key=lambda item: -item[1])
-    output_dir = _ensure_result_dir("feature_importance")
+    output_dir = _ensure_result_root()
     csv_path = _timestamped_path(output_dir, "feature_importance", ".csv", stamp)
     top_features_path = _timestamped_path(output_dir, "top_features", ".json", stamp)
     plot_path = _timestamped_path(output_dir, "feature_importance", ".png", stamp)
@@ -292,38 +225,44 @@ def plot_feature_importance(model_data: str) -> None:
         ],
     )
     _save_feature_importance_png(plot_path, features, importances)
-    _emit_result(output_dir)
+    return None
 
 
 def bundle_core_results(
     rf_predictions: str,
     rf_model_data: str,
-    rf_plot_results: str,
+    rf_confusion_plot: str,
+    rf_feature_plot: str,
     lr_predictions: str,
     lr_model_data: str,
-    lr_plot_results: str,
+    lr_confusion_plot: str,
+    lr_feature_plot: str,
     target_col: str,
 ) -> None:
     _log("Bundling core results...")
     stamp = _timestamp()
-    output_dir = _ensure_result_dir("core_results")
+    output_dir = _ensure_result_root()
 
-    rows = []
-    for label, model_data, predictions, plot_results in (
-        ("random_forest", rf_model_data, rf_predictions, rf_plot_results),
-        ("logistic_regression", lr_model_data, lr_predictions, lr_plot_results),
-    ):
-        model_output_dir = output_dir / label
-        model_output_dir.mkdir(parents=True, exist_ok=True)
-        manifest = _bundle_core_model(
-            model_output_dir,
-            model_data,
-            predictions,
-            plot_results,
-            stamp,
-        )
-        manifest["directory"] = label
-        rows.append(manifest)
+    rows = _bundle_models(
+        output_dir,
+        [
+            (
+                "random_forest",
+                rf_model_data,
+                rf_predictions,
+                rf_confusion_plot,
+                rf_feature_plot,
+            ),
+            (
+                "logistic_regression",
+                lr_model_data,
+                lr_predictions,
+                lr_confusion_plot,
+                lr_feature_plot,
+            ),
+        ],
+        stamp,
+    )
 
     _save_json(
         output_dir / "bundle_manifest.json",
@@ -333,7 +272,7 @@ def bundle_core_results(
             "directories": [row["directory"] for row in rows],
         },
     )
-    _emit_result(output_dir)
+    return None
 
 
 def bundle_results(
@@ -354,28 +293,36 @@ def bundle_results(
 ) -> None:
     _log("Bundling final results...")
     stamp = _timestamp()
-    output_dir = _ensure_result_dir("heart_results")
+    output_dir = _ensure_result_root()
+    _ = split_data
 
-    model_specs = [
-        ("random_forest", rf_model_data, rf_predictions, rf_confusion_plot, rf_feature_plot),
-        ("logistic_regression", lr_model_data, lr_predictions, lr_confusion_plot, lr_feature_plot),
-        ("decision_tree", dt_model_data, dt_predictions, dt_confusion_plot, dt_feature_plot),
-    ]
-
-    rows = []
-    for label, model_data, predictions, confusion_plot, feature_plot in model_specs:
-        model_output_dir = output_dir / label
-        model_output_dir.mkdir(parents=True, exist_ok=True)
-        manifest = _copy_model_bundle(
-            model_output_dir,
-            model_data,
-            predictions,
-            confusion_plot,
-            feature_plot,
-            stamp,
-        )
-        manifest["directory"] = label
-        rows.append(manifest)
+    rows = _bundle_models(
+        output_dir,
+        [
+            (
+                "random_forest",
+                rf_model_data,
+                rf_predictions,
+                rf_confusion_plot,
+                rf_feature_plot,
+            ),
+            (
+                "logistic_regression",
+                lr_model_data,
+                lr_predictions,
+                lr_confusion_plot,
+                lr_feature_plot,
+            ),
+            (
+                "decision_tree",
+                dt_model_data,
+                dt_predictions,
+                dt_confusion_plot,
+                dt_feature_plot,
+            ),
+        ],
+        stamp,
+    )
 
     comparison_csv_path = _timestamped_path(output_dir, "model_comparison", ".csv", stamp)
     comparison_json_path = _timestamped_path(output_dir, "model_comparison", ".json", stamp)
@@ -388,6 +335,7 @@ def bundle_results(
             "comparison_csv": comparison_csv_path.name,
             "comparison_json": comparison_json_path.name,
             "models": [row["model_name"] for row in rows],
+            "directories": [row["directory"] for row in rows],
         },
     )
-    _emit_result(output_dir)
+    return None

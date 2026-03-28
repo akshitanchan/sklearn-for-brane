@@ -1,5 +1,5 @@
 name: sklearn_brane
-version: 1.1.0
+version: 1.2.0
 kind: ecu
 
 files:
@@ -148,20 +148,3 @@ actions:
     output:
       - name: output
         type: string
-
-  plot_results:
-    command:
-      args:
-        - plot_results
-    input:
-      - name: predictions
-        type: IntermediateResult
-      - name: model_data
-        type: IntermediateResult
-      - name: split_data
-        type: IntermediateResult
-      - name: target_col
-        type: string
-    output:
-      - name: result
-        type: IntermediateResult

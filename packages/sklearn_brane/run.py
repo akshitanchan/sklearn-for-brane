@@ -64,12 +64,5 @@ if __name__ == "__main__":
             _env("MODEL_NAME"),
             int(_env("N_FOLDS")),
         )
-    elif command == "plot_results":
-        sklearn_brane.plot_results(
-            _env("PREDICTIONS"),
-            _env("MODEL_DATA"),
-            _env("SPLIT_DATA"),
-            _env("TARGET_COL"),
-        )
     else:
         raise ValueError(f"Unknown command '{command}'.")

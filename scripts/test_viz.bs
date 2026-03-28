@@ -1,4 +1,5 @@
 import sklearn_brane;
+import sklearn_viz;
 
 on "worker1" {
     println("Running visualization smoke test...");
@@ -27,12 +28,14 @@ on "worker1" {
     let cv := cross_validate(scaled, "target", "random_forest", "5");
 
     println("Generating plots...");
-    let report := plot_results(predictions, model, scaled, "target");
+    let confusion_plot := plot_confusion_matrix(predictions, scaled, "target");
+    let feature_plot := plot_feature_importance(model);
 
     println(evaluation);
     println(importance);
     println(cv);
     println("Saved plot PNGs to /result.");
     println("Visualization smoke test complete.");
-    println(report);
+    println(confusion_plot);
+    println(feature_plot);
 }

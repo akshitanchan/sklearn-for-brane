@@ -6,7 +6,6 @@ from .sklearn_brane import (
     fit_model,
     impute_missing,
     load_and_split,
-    plot_results,
     predict,
     scale_features,
 )
@@ -19,7 +18,6 @@ __all__ = [
     "fit_model",
     "impute_missing",
     "load_and_split",
-    "plot_results",
     "predict",
     "scale_features",
 ]
