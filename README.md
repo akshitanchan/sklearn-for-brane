@@ -69,7 +69,7 @@ The core flow uses the `breast_cancer` dataset and is split across two workers:
 - `worker1`: Random Forest branch
 - `worker2`: Logistic Regression branch
 
-The branch outputs are then merged by [pipeline.bs](/Users/prita/uni/p4/webservices/sklearn-for-brane/pipeline.bs), which:
+The branch outputs are then merged by [pipeline.bs], which:
 - loads the branch result datasets
 - calls `sklearn_viz.bundle_core_results`
 - commits the final output as `core_results`
@@ -85,7 +85,7 @@ The extended flow adds:
 - `impute_missing`
 - `encode_labels`
 
-Then [pipeline_extended.bs](/Users/prita/uni/p4/webservices/sklearn-for-brane/pipeline_extended.bs):
+Then [pipeline_extended.bs]:
 - loads the branch result datasets
 - calls `sklearn_viz.bundle_results`
 - commits the final output as `extended_results`
