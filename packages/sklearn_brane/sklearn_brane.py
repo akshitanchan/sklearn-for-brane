@@ -194,67 +194,127 @@ def _save_model_comparison_png(comparison_plot_path: Path, rows: list[dict]) -> 
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    ordered_rows = sorted(rows, key=lambda row: row["accuracy"], reverse=True)
+    labels = [row["model_name"].replace("_", " ").title() for row in ordered_rows]
+    test_acc = np.array([row["accuracy"] for row in ordered_rows], dtype=float)
+    cv_mean = np.array([row["cross_validation_mean_accuracy"] for row in ordered_rows], dtype=float)
+    cv_std = np.array([row["cross_validation_std_accuracy"] for row in ordered_rows], dtype=float)
 
-    ordered_rows = sorted(
-        rows,
-        key=lambda row: (row["accuracy"], row["cross_validation_mean_accuracy"]),
-        reverse=True,
+    n = len(labels)
+    best_idx = int(np.argmax(test_acc))
+    most_stable_idx = int(np.argmin(cv_std))
+
+    x = np.arange(n)
+    width = 0.35
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    fig.patch.set_facecolor("white")
+
+    ax = axes[0]
+    ax.set_facecolor("white")
+    bars1 = ax.bar(
+        x - width / 2,
+        test_acc,
+        width,
+        label="Test Accuracy",
+        color="#2196a6",
+        edgecolor="white",
+        linewidth=0.5,
     )
-    model_names = [row["model_name"].replace("_", " ").title() for row in ordered_rows]
-    test_accuracy = [row["accuracy"] for row in ordered_rows]
-    cv_accuracy = [row["cross_validation_mean_accuracy"] for row in ordered_rows]
-    cv_std = [row["cross_validation_std_accuracy"] for row in ordered_rows]
-    y = np.arange(len(model_names))
-
-    fig, ax = plt.subplots(figsize=(9, 5.5))
-    fig.patch.set_facecolor("#f7f4ea")
-    ax.set_facecolor("#fffdf8")
-
-    test_colors = ["#0d3b66", "#1d6996", "#4aa8c0"]
-    cv_colors = ["#f4d35e", "#ee964b", "#f95738"]
-
-    ax.barh(y + 0.18, test_accuracy, height=0.32, color=test_colors[: len(y)], label="Test accuracy")
-    ax.barh(y - 0.18, cv_accuracy, height=0.32, color=cv_colors[: len(y)], label="CV mean accuracy")
-
-    for idx, (test, cv, std) in enumerate(zip(test_accuracy, cv_accuracy, cv_std)):
-        ax.text(min(test + 0.01, 0.985), idx + 0.18, f"{test:.3f}", va="center", ha="left", fontsize=9, color="#102a43")
-        ax.text(min(cv + 0.01, 0.985), idx - 0.18, f"{cv:.3f}", va="center", ha="left", fontsize=9, color="#7c2d12")
-        ax.text(0.995, idx - 0.18, f"±{std:.3f}", va="center", ha="right", fontsize=8, color="#6b7280")
-
-    best_idx = 0
-    ax.scatter(
-        [test_accuracy[best_idx]],
-        [best_idx + 0.18],
-        s=160,
-        marker="*",
-        color="#c1121f",
-        zorder=5,
-        label="Top test score",
+    bars2 = ax.bar(
+        x + width / 2,
+        cv_mean,
+        width,
+        label="CV Mean Accuracy",
+        color="#90caf9",
+        edgecolor="white",
+        linewidth=0.5,
+    )
+    ax.errorbar(
+        x + width / 2,
+        cv_mean,
+        yerr=cv_std,
+        fmt="none",
+        ecolor="#555",
+        elinewidth=1.2,
+        capsize=4,
     )
 
-    ax.set_yticks(y)
-    ax.set_yticklabels(model_names, fontsize=10)
-    ax.invert_yaxis()
-    ax.set_xlim(0, 1.02)
-    ax.set_xlabel("Accuracy", fontsize=11)
-    ax.set_title("Model Comparison Scoreboard", fontsize=15, weight="bold", pad=12)
-    ax.grid(axis="x", linestyle="--", alpha=0.25)
+    for bar in bars1:
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.003,
+            f"{bar.get_height():.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=8.5,
+        )
+    for bar in bars2:
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.003,
+            f"{bar.get_height():.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=8.5,
+        )
+
+    y_min = max(0, min(test_acc.min(), (cv_mean - cv_std).min()) - 0.04)
+    ax.set_ylim(y_min, 1.0)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=15, ha="right", fontsize=9)
+    ax.set_ylabel("Accuracy")
+    ax.set_title("Model Comparison")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_visible(False)
-    ax.legend(loc="lower right", frameon=False)
 
-    ax.text(
-        0.0,
-        1.04,
-        "Test accuracy and cross-validation mean for each model",
-        transform=ax.transAxes,
-        fontsize=10,
-        color="#52606d",
-    )
+    for tick_idx, tick in enumerate(ax.get_xticklabels()):
+        if tick_idx == best_idx:
+            tick.set_fontweight("bold")
+            tick.set_color("#2196a6")
 
+    ax2 = axes[1]
+    ax2.set_facecolor("white")
+    stability_colors = [
+        "#2196a6" if i == most_stable_idx else "#90caf9"
+        for i in range(n)
+    ]
+    bars3 = ax2.bar(x, cv_std, color=stability_colors, edgecolor="white", linewidth=0.5)
+
+    for bar in bars3:
+        ax2.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.0005,
+            f"{bar.get_height():.4f}",
+            ha="center",
+            va="bottom",
+            fontsize=8.5,
+        )
+
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(labels, rotation=15, ha="right", fontsize=9)
+    ax2.set_ylabel("Std Dev")
+    ax2.set_title("CV Stability (lower = better)")
+    ax2.grid(axis="y", linestyle="--", alpha=0.4)
+    ax2.spines["top"].set_visible(False)
+    ax2.spines["right"].set_visible(False)
+
+    for tick_idx, tick in enumerate(ax2.get_xticklabels()):
+        if tick_idx == most_stable_idx:
+            tick.set_fontweight("bold")
+            tick.set_color("#2196a6")
+
+    plt.suptitle("Model Comparison", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    plt.savefig(comparison_plot_path, format="png", bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.savefig(
+        comparison_plot_path,
+        format="png",
+        dpi=150,
+        bbox_inches="tight",
+        facecolor="white",
+    )
     plt.close(fig)
 
 
