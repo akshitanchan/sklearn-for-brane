@@ -7,7 +7,7 @@ on "worker1" {
     let dt_bundle := new Data { name := "extended_dt_branch" };
 
     println("Bundling final results...");
-    let results := bundle_results(rf_bundle, lr_bundle, dt_bundle, "target");
+    let results := bundle_results(rf_bundle, lr_bundle, dt_bundle, "target", "extended");
 
     println("Committing extended result as extended_results...");
     return commit_result("extended_results", results);

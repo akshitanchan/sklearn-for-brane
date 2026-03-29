@@ -328,65 +328,35 @@ def bundle_model_results(
     return None
 
 
-def bundle_core_results(
-    rf_bundle: str,
-    lr_bundle: str,
-    target_col: str,
-) -> None:
-    _log("Bundling core results...")
-    stamp = _timestamp()
-    output_dir = _ensure_result_root()
-
-    rows = _merge_model_bundles(
-        output_dir,
-        [
-            ("random_forest", rf_bundle),
-            ("logistic_regression", lr_bundle),
-        ],
-        stamp,
-    )
-
-    _save_json(
-        output_dir / "bundle_manifest.json",
-        {
-            "target_col": target_col,
-            "models": [row["model_name"] for row in rows],
-            "directories": [row["directory"] for row in rows],
-        },
-    )
-    return None
-
-
 def bundle_results(
     rf_bundle: str,
     lr_bundle: str,
     dt_bundle: str,
     target_col: str,
+    workflow: str,
 ) -> None:
-    _log("Bundling final results...")
+    workflow_name = workflow.strip().lower()
+    if workflow_name not in {"core", "extended"}:
+        raise ValueError(f"Unknown workflow '{workflow}'. Expected 'core' or 'extended'.")
+
+    _log(f"Bundling {workflow_name} results...")
     stamp = _timestamp()
     output_dir = _ensure_result_root()
 
-    rows = _merge_model_bundles(
-        output_dir,
-        [
-            ("random_forest", rf_bundle),
-            ("logistic_regression", lr_bundle),
-            ("decision_tree", dt_bundle),
-        ],
-        stamp,
-    )
+    bundle_dirs = [
+        ("random_forest", rf_bundle),
+        ("logistic_regression", lr_bundle),
+    ]
+    if workflow_name == "extended":
+        bundle_dirs.append(("decision_tree", dt_bundle))
 
-    comparison_csv_path = _timestamped_path(output_dir, "model_comparison", ".csv", stamp)
-    comparison_json_path = _timestamped_path(output_dir, "model_comparison", ".json", stamp)
-    pd.DataFrame(rows).to_csv(comparison_csv_path, index=False)
-    _save_json(comparison_json_path, rows)
+    rows = _merge_model_bundles(output_dir, bundle_dirs, stamp)
+
     _save_json(
         output_dir / "bundle_manifest.json",
         {
+            "workflow": workflow_name,
             "target_col": target_col,
-            "comparison_csv": comparison_csv_path.name,
-            "comparison_json": comparison_json_path.name,
             "models": [row["model_name"] for row in rows],
             "directories": [row["directory"] for row in rows],
         },

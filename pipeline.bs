@@ -6,7 +6,7 @@ on "worker1" {
     let lr_bundle := new Data { name := "core_lr_branch" };
 
     println("Bundling core results...");
-    let results := bundle_core_results(rf_bundle, lr_bundle, "target");
+    let results := bundle_results(rf_bundle, lr_bundle, lr_bundle, "target", "core");
 
     println("Committing core result as core_results...");
     return commit_result("core_results", results);

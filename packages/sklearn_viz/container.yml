@@ -1,5 +1,5 @@
 name: sklearn_viz
-version: 2.0.0
+version: 2.1.0
 kind: ecu
 
 files:
@@ -63,21 +63,6 @@ actions:
       - name: result
         type: IntermediateResult
 
-  bundle_core_results:
-    command:
-      args:
-        - bundle_core_results
-    input:
-      - name: rf_bundle
-        type: Data
-      - name: lr_bundle
-        type: Data
-      - name: target_col
-        type: string
-    output:
-      - name: result
-        type: IntermediateResult
-
   bundle_results:
     command:
       args:
@@ -90,6 +75,8 @@ actions:
       - name: dt_bundle
         type: Data
       - name: target_col
+        type: string
+      - name: workflow
         type: string
     output:
       - name: result

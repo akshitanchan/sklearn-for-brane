@@ -51,12 +51,12 @@ Its actions are:
 - `plot_confusion_matrix`
 - `plot_feature_importance`
 - `bundle_model_results`
-- `bundle_core_results`
 - `bundle_results`
 
 In this package:
 - `plot_confusion_matrix` and `plot_feature_importance` are visualization-oriented wrappers
-- `bundle_model_results`, `bundle_core_results`, and `bundle_results` are Brane workflow helper actions used to collect outputs into final committed result datasets
+- `bundle_model_results` packs one model branch into a single bundle
+- `bundle_results` is the only final bundler and handles both `core` and `extended` via a workflow argument
 
 This package is what makes the project a real two-package Brane workflow instead of just one sklearn wrapper package.
 
@@ -71,7 +71,7 @@ The core flow uses the `breast_cancer` dataset and is split across two workers:
 
 The branch outputs are then merged by [pipeline.bs], which:
 - loads the branch result datasets
-- calls `sklearn_viz.bundle_core_results`
+- calls `sklearn_viz.bundle_results` with workflow `core`
 - commits the final output as `core_results`
 
 ### Extended workflow
@@ -87,7 +87,7 @@ The extended flow adds:
 
 Then [pipeline_extended.bs]:
 - loads the branch result datasets
-- calls `sklearn_viz.bundle_results`
+- calls `sklearn_viz.bundle_results` with workflow `extended`
 - commits the final output as `extended_results`
 
 ## Repo structure

@@ -30,18 +30,13 @@ if __name__ == "__main__":
             _env("CONFUSION_PLOT"),
             _env("FEATURE_PLOT"),
         )
-    elif command == "bundle_core_results":
-        sklearn_viz.bundle_core_results(
-            _env("RF_BUNDLE"),
-            _env("LR_BUNDLE"),
-            _env("TARGET_COL"),
-        )
     elif command == "bundle_results":
         sklearn_viz.bundle_results(
             _env("RF_BUNDLE"),
             _env("LR_BUNDLE"),
             _env("DT_BUNDLE"),
             _env("TARGET_COL"),
+            _env("WORKFLOW"),
         )
     else:
         raise ValueError(f"Unknown command '{command}'.")
