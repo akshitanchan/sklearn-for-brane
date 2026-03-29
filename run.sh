@@ -107,34 +107,15 @@ cleanup_run_datasets() {
 run_branch_workflows() {
     local branch_script
     local dataset_name
-    local -a pids=()
-    local -a names=()
-    local pid
-    local failed=0
-    local i
 
     for dataset_name in "${BRANCH_DATASETS[@]}"; do
         ensure_dataset_dir "$dataset_name"
     done
 
     for branch_script in "${BRANCH_SCRIPTS[@]}"; do
-        echo "Starting branch workflow $(basename "$branch_script")..."
-        brane run "$branch_script" --remote &
-        pids+=("$!")
-        names+=("$(basename "$branch_script")")
+        echo "Running branch workflow $(basename "$branch_script")..."
+        brane run "$branch_script" --remote
     done
-
-    for i in "${!pids[@]}"; do
-        pid="${pids[$i]}"
-        if ! wait "$pid"; then
-            echo "Branch workflow failed: ${names[$i]}" >&2
-            failed=1
-        fi
-    done
-
-    if [[ "$failed" -ne 0 ]]; then
-        exit 1
-    fi
 }
 
 prompt_mode
