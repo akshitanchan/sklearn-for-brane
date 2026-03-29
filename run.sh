@@ -35,7 +35,6 @@ prompt_mode() {
                 "extended_lr_branch"
                 "extended_dt_branch"
             )
-            PLACEHOLDER_DATASETS=()
             ;;
         core|"")
             PIPELINE_PATH="$ROOT_DIR/pipeline.bs"
@@ -49,9 +48,6 @@ prompt_mode() {
             BRANCH_DATASETS=(
                 "core_rf_branch"
                 "core_lr_branch"
-            )
-            PLACEHOLDER_DATASETS=(
-                "core_placeholder_bundle"
             )
             ;;
         *)
@@ -113,10 +109,6 @@ run_branch_workflows() {
     local dataset_name
 
     for dataset_name in "${BRANCH_DATASETS[@]}"; do
-        ensure_dataset_dir "$dataset_name"
-    done
-
-    for dataset_name in "${PLACEHOLDER_DATASETS[@]}"; do
         ensure_dataset_dir "$dataset_name"
     done
 
