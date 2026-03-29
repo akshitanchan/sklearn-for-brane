@@ -13,6 +13,9 @@ Together, they support:
 - a **core** two-worker flow on the Breast Cancer dataset
 - an **extended** two-worker flow on the Heart Disease dataset
 
+  <img width="744" height="360" alt="brane-overview" src="https://github.com/user-attachments/assets/ce67ab17-f727-4c90-a875-3c7d16e4087e" />
+
+
 ## Package 1: `sklearn_brane`
 
 `sklearn_brane` contains the main ML and preprocessing actions.
