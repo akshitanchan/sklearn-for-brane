@@ -2,7 +2,8 @@ import sklearn_brane;
 
 println("Running parallel worker probe...");
 let branch_results := parallel [all] [{
-    on "worker1" {
+    #[on("worker1")]
+    {
         println("worker1 branch: loading dataset...");
         let w1_data := new Data { name := "breast_cancer" };
 
@@ -16,7 +17,8 @@ let branch_results := parallel [all] [{
         return w1_scaled;
     }
 }, {
-    on "worker2" {
+    #[on("worker2")]
+    {
         println("worker2 branch: loading dataset...");
         let w2_data := new Data { name := "breast_cancer" };
 
@@ -31,7 +33,8 @@ let branch_results := parallel [all] [{
     }
 }];
 
-on "worker1" {
+#[on("worker1")]
+{
     println("Parallel worker probe complete.");
     println(branch_results[0]);
     println(branch_results[1]);
