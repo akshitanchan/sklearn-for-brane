@@ -1,0 +1,38 @@
+import sklearn_brane;
+
+println("Running parallel worker probe...");
+let branch_results := parallel [all] [{
+    on "worker1" {
+        println("worker1 branch: loading dataset...");
+        let w1_data := new Data { name := "breast_cancer" };
+
+        println("worker1 branch: splitting...");
+        let w1_split := load_and_split(w1_data, "target", "0.2");
+
+        println("worker1 branch: scaling...");
+        let w1_scaled := scale_features(w1_split, "standard");
+
+        println("worker1 branch complete.");
+        return w1_scaled;
+    }
+}, {
+    on "worker2" {
+        println("worker2 branch: loading dataset...");
+        let w2_data := new Data { name := "breast_cancer" };
+
+        println("worker2 branch: splitting...");
+        let w2_split := load_and_split(w2_data, "target", "0.2");
+
+        println("worker2 branch: scaling...");
+        let w2_scaled := scale_features(w2_split, "standard");
+
+        println("worker2 branch complete.");
+        return w2_scaled;
+    }
+}];
+
+on "worker1" {
+    println("Parallel worker probe complete.");
+    println(branch_results[0]);
+    println(branch_results[1]);
+}
