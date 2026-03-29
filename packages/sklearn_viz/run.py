@@ -5,10 +5,8 @@ import sys
 
 import sklearn_viz
 
-
 def _env(name: str):
     return json.loads(os.environ[name])
-
 
 if __name__ == "__main__":
     command = sys.argv[1]
