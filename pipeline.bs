@@ -4,10 +4,10 @@ on "worker1" {
     println("Loading core branch bundles...");
     let rf_bundle := new Data { name := "core_rf_branch" };
     let lr_bundle := new Data { name := "core_lr_branch" };
-    let ignored_bundle := new Data { name := "breast_cancer" };
+    let empty_bundle := make_empty_bundle();
 
     println("Bundling core results...");
-    let results := bundle_results(rf_bundle, lr_bundle, ignored_bundle, "target", "core");
+    let results := bundle_results(rf_bundle, lr_bundle, empty_bundle, "target", "core");
 
     println("Committing core result as core_results...");
     return commit_result("core_results", results);

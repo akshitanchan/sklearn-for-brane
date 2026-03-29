@@ -1,5 +1,5 @@
 name: sklearn_viz
-version: 2.2.0
+version: 2.3.0
 kind: ecu
 
 files:
@@ -63,17 +63,25 @@ actions:
       - name: result
         type: IntermediateResult
 
+  make_empty_bundle:
+    command:
+      args:
+        - make_empty_bundle
+    output:
+      - name: result
+        type: IntermediateResult
+
   bundle_results:
     command:
       args:
         - bundle_results
     input:
       - name: rf_bundle
-        type: Data
+        type: IntermediateResult
       - name: lr_bundle
-        type: Data
+        type: IntermediateResult
       - name: dt_bundle
-        type: Data
+        type: IntermediateResult
       - name: target_col
         type: string
       - name: workflow

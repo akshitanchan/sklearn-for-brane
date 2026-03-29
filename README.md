@@ -51,11 +51,13 @@ Its actions are:
 - `plot_confusion_matrix`
 - `plot_feature_importance`
 - `bundle_model_results`
+- `make_empty_bundle`
 - `bundle_results`
 
 In this package:
 - `plot_confusion_matrix` and `plot_feature_importance` are visualization-oriented wrappers
 - `bundle_model_results` packs one model branch into a single bundle
+- `make_empty_bundle` creates an empty intermediate bundle placeholder for the core merge path
 - `bundle_results` is the only final bundler and handles both `core` and `extended` via a workflow argument
 
 This package is what makes the project a real two-package Brane workflow instead of just one sklearn wrapper package.

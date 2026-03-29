@@ -328,6 +328,13 @@ def bundle_model_results(
     return None
 
 
+def make_empty_bundle() -> None:
+    _log("Creating empty bundle placeholder...")
+    output_dir = _ensure_result_root()
+    _save_json(output_dir / "empty_bundle.json", {"empty": True})
+    return None
+
+
 def bundle_results(
     rf_bundle: str,
     lr_bundle: str,

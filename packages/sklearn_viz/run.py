@@ -30,6 +30,8 @@ if __name__ == "__main__":
             _env("CONFUSION_PLOT"),
             _env("FEATURE_PLOT"),
         )
+    elif command == "make_empty_bundle":
+        sklearn_viz.make_empty_bundle()
     elif command == "bundle_results":
         sklearn_viz.bundle_results(
             _env("RF_BUNDLE"),
