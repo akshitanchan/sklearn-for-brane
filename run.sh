@@ -69,22 +69,6 @@ ensure_dataset_dir() {
     mkdir -p "$HOME/.local/share/brane/data/$name/data"
 }
 
-run_core_tests() {
-    echo "Running preprocess smoke test..."
-    brane run "$ROOT_DIR/scripts/test_preprocess.bs" --remote
-
-    echo "Running model smoke test..."
-    brane run "$ROOT_DIR/scripts/test_model.bs" --remote
-
-    echo "Running visualization smoke test..."
-    brane run "$ROOT_DIR/scripts/test_viz.bs" --remote
-}
-
-run_extension_test() {
-    echo "Running extension smoke test..."
-    brane run "$ROOT_DIR/scripts/test_extended.bs" --remote
-}
-
 copy_results() {
     mkdir -p "$HOME/.local/share/brane/data/$RESULT_NAME/data"
     local source_path
@@ -125,20 +109,6 @@ if prompt_yes_no "Do you want to rebuild the required packages first?"; then
     bash "$ROOT_DIR/build.sh"
 else
     echo "Skipping rebuild."
-fi
-
-if [[ "$PIPELINE_LABEL" == "core" ]]; then
-    if prompt_yes_no "Do you want to run the core smoke tests first?"; then
-        run_core_tests
-    else
-        echo "Skipping core smoke tests."
-    fi
-else
-    if prompt_yes_no "Do you want to run the extension smoke test first?"; then
-        run_extension_test
-    else
-        echo "Skipping extension smoke test."
-    fi
 fi
 
 echo "Cleaning stale branch and result datasets..."

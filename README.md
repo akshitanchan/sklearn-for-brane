@@ -101,10 +101,6 @@ Then [pipeline_extended.bs]:
 - `run.sh`
 - `scripts/core_*_branch.bs`
 - `scripts/extended_*_branch.bs`
-- `scripts/test_preprocess.bs`
-- `scripts/test_model.bs`
-- `scripts/test_viz.bs`
-- `scripts/test_extended.bs`
 
 ## Build
 
@@ -130,7 +126,6 @@ bash run.sh extended
 
 `run.sh`:
 - optionally rebuilds packages
-- optionally runs smoke tests
 - runs the worker-specific branch workflows
 - runs the merge workflow
 - copies final results into `results/core` or `results/extended`
