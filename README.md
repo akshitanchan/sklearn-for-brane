@@ -94,6 +94,8 @@ Then [pipeline_extended.bs]:
 - calls `sklearn_viz.bundle_results` with workflow `extended`
 - commits the final output as `extended_results`
 
+  <img width="734" height="386" alt="image" src="https://github.com/user-attachments/assets/ead27eee-2928-4cf0-a1b1-cdbec78302f3" />
+
 ## Repo structure
 
 - `packages/sklearn_brane`
