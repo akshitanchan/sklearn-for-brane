@@ -129,7 +129,7 @@ bash run.sh extended
 `run.sh`:
 - optionally rebuilds packages
 - optionally runs smoke tests
-- runs the worker-specific branch workflows
+- runs the worker-specific branch workflows in parallel
 - runs the merge workflow
 - copies final results into `results/core` or `results/extended`
 
